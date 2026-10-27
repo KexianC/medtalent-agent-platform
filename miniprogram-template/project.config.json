@@ -1,0 +1,7 @@
+{
+  "description": "医生智能体 WebView 小程序",
+  "compileType": "miniprogram",
+  "setting": {"es6": true, "minified": true, "urlCheck": true},
+  "appid": "touristappid",
+  "projectname": "doctor-agent"
+}

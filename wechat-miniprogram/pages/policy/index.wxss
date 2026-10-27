@@ -1,0 +1,4 @@
+.updated { margin: 16rpx 0 36rpx; font-size: 24rpx; }
+.section-title { font-size: 31rpx; font-weight: 600; margin: 32rpx 0 14rpx; }
+.paragraph { color: #516178; font-size: 28rpx; line-height: 1.9; word-break: break-word; }
+.back-link { color: #2672e8; padding: 40rpx 0; font-size: 26rpx; }

@@ -1,0 +1,26 @@
+# 将 agents.example.com 和证书路径替换为自己的域名；不修改原 demo 的域名配置。
+server {
+    listen 80;
+    server_name agents.example.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name agents.example.com;
+    ssl_certificate /etc/letsencrypt/live/agents.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/agents.example.com/privkey.pem;
+    client_max_body_size 52m;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    location / {
+        proxy_pass http://127.0.0.1:8788;
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_read_timeout 180s;
+        proxy_send_timeout 180s;
+        proxy_buffering off;
+        proxy_request_buffering off;
+    }
+}

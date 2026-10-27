@@ -1,0 +1,9 @@
+<web-view wx:if="{{src && !failed}}" src="{{src}}" data-attempt="{{attempt}}" bindload="onWebLoad" binderror="onWebError"></web-view>
+<view wx:else class="page fallback">
+  <image class="fallback-logo" src="/assets/medtalent-logo.png" mode="aspectFit" />
+  <view class="title">{{errorTitle}}</view>
+  <view class="muted description">{{errorDescription}}</view>
+  <button class="primary" bindtap="retry">重新加载</button>
+  <button class="secondary" bindtap="goHome">返回小程序入口</button>
+  <navigator class="help" url="/pages/about/index">查看帮助与联系方式</navigator>
+</view>

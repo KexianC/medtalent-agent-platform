@@ -1,0 +1,15 @@
+.record-review-card { min-width: 0; margin: 18px 0; padding: 18px; border: 1px solid #dfe7e3; border-radius: 18px; background: #fff; color: var(--journey-ink, #30453d); }
+.record-review-card h2 { margin: 0; font-size: 17px; line-height: 1.5; }
+.record-review-card p { margin: 9px 0; color: #64756e; font-size: 12px; line-height: 1.7; }
+.record-review-card header p { font-size: 11px; }
+.record-review-notes { display: flex; align-items: flex-start; gap: 8px; padding: 10px 0; color: #52665f; font-size: 12px; line-height: 1.7; cursor: pointer; }
+.record-review-notes input { flex: none; width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--journey-accent, #39776a); }
+.record-review-preview summary { min-height: 44px; padding: 12px 0; color: var(--journey-accent-strong, #39776a); font-size: 12px; cursor: pointer; }
+.record-review-preview textarea { display: block; width: 100%; min-width: 0; padding: 12px; border: 1px solid #dfe7e3; border-radius: 10px; background: #fafcfb; color: #52665f; font: inherit; font-size: 13px; line-height: 1.8; resize: vertical; }
+.record-review-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.record-review-actions button { display: inline-flex; justify-content: center; align-items: center; gap: 5px; min-height: 44px; padding: 10px 12px; border: 1px solid #dfe7e3; border-radius: 10px; background: #fff; color: var(--journey-accent-strong, #39776a); font-size: 12px; cursor: pointer; }
+.record-review-actions .journey-primary-button { flex: 1 0 100%; background: var(--journey-accent-strong, #39776a); color: #fff; }
+.record-review-card button:disabled { opacity: .5; cursor: default; }
+.record-review-card button:focus-visible, .record-review-card input:focus-visible, .record-review-card textarea:focus-visible, .record-review-card summary:focus-visible { outline: 2px solid var(--journey-accent, #39776a); outline-offset: 3px; }
+.record-review-card > small { display: block; color: #718079; font-size: 11px; line-height: 1.7; }
+.record-review-card .record-review-notice { color: var(--journey-accent-strong, #39776a); }

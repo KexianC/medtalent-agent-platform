@@ -1,0 +1,12 @@
+{
+  "navigationStyle": "custom",
+  "disableScroll": true,
+  "usingComponents": {
+    "native-home": "/components/home/index",
+    "native-education": "/components/education/index",
+    "native-health": "/components/health/index",
+    "native-wellness": "/components/wellness/index",
+    "native-guidance": "/components/guidance/index",
+    "native-assessments": "/components/assessments/index"
+  }
+}

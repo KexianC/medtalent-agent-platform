@@ -1,0 +1,1 @@
+{ "desc": "仅公开智能体目录与资料页；私人记录不参与搜索", "rules": [{ "action": "allow", "page": "pages/index/index" }, { "action": "disallow", "page": "*" }] }

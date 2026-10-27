@@ -1,0 +1,19 @@
+<view class="page about">
+  <view class="brand"><image src="/assets/medtalent-logo.png" mode="aspectFit" /><text>{{appName}}</text></view>
+  <view class="muted summary">基于专业知识的健康科普与智能问答平台。这里的智能体是人工智能助手，回答不代表医生本人接诊。</view>
+  <view class="card">
+    <view class="section-title">常见问题</view>
+    <view class="question">页面打不开怎么办？</view><view class="muted">检查网络后点击“重新加载”，或返回入口再次进入。持续失败时请联系运营方。</view>
+    <view class="question">语音功能无法使用怎么办？</view><view class="muted">语音能力受微信版本、手机系统与麦克风授权影响。你可以继续使用文字输入；是否支持语音以当前设备页面提示为准。</view>
+    <view class="question">如何查看或删除记录？</view><view class="muted">进入对应智能体的“我的”与“隐私与设置”管理记录。微信登录后，同一账号可在其他设备查看已同步的数据；未同步的本机记录可能随缓存清理而丢失。清理设备缓存不会自动删除账号数据库中的记录，数据问题可联系下方运营方。</view>
+    <view class="question">遇到紧急情况怎么办？</view><view class="muted">本应用不提供急救或诊疗服务。出现紧急情况请立即联系当地急救服务或前往医疗机构。</view>
+  </view>
+  <view class="card contact" wx:if="{{operatorName || privacyEmail}}">
+    <view class="section-title">运营与联系</view>
+    <view wx:if="{{operatorName}}" class="muted">运营主体：<text selectable>{{operatorName}}</text></view>
+    <view wx:if="{{privacyEmail}}" class="muted">隐私与问题反馈：<text selectable>{{privacyEmail}}</text></view>
+  </view>
+  <view class="links"><navigator url="/pages/policy/index?type=privacy">隐私说明</navigator><navigator url="/pages/policy/index?type=terms">使用须知</navigator></view>
+  <button class="privacy-button" bindtap="openWechatPrivacy">查看微信隐私保护指引</button>
+  <view class="version muted">版本 {{version}}</view>
+</view>

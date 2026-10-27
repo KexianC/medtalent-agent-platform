@@ -1,0 +1,7 @@
+{
+  "desc": "仅索引公开入口；不索引隐私说明和动态网页承载页。",
+  "rules": [
+    { "action": "allow", "page": "pages/index/index" },
+    { "action": "disallow", "page": "*" }
+  ]
+}

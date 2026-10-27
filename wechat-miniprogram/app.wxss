@@ -1,0 +1,15 @@
+page { background: #f7f9fc; color: #18263e; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 28rpx; }
+view, button, navigator { box-sizing: border-box; }
+button::after { border: 0; }
+button { margin: 0; font-size: 28rpx; }
+.page { min-height: 100vh; padding: 48rpx 40rpx; padding-bottom: calc(48rpx + constant(safe-area-inset-bottom)); padding-bottom: calc(48rpx + env(safe-area-inset-bottom)); }
+.brand { display: flex; align-items: center; gap: 18rpx; font-size: 30rpx; font-weight: 600; }
+.brand image { width: 72rpx; height: 72rpx; }
+.muted { color: #64748b; line-height: 1.8; }
+.primary { width: 100%; color: #fff; background: #2672e8; border-radius: 24rpx; line-height: 100rpx; font-weight: 600; }
+.primary[disabled] { background: #93b3e4; color: #fff; }
+.secondary { width: 100%; color: #2672e8; background: #eaf1ff; border-radius: 24rpx; line-height: 92rpx; }
+.links { display: flex; flex-wrap: wrap; justify-content: center; gap: 28rpx; color: #516783; font-size: 25rpx; }
+.links navigator { padding: 18rpx 0; }
+.card { border: 1rpx solid #e5ebf3; border-radius: 28rpx; background: #fff; padding: 32rpx; }
+.title { font-size: 42rpx; line-height: 1.4; font-weight: 600; }

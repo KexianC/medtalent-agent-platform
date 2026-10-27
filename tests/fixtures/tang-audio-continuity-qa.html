@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>【模拟验收】唐劲松输入提示关闭状态</title>
+  <style>
+    #qa-panel { position: fixed; z-index: 2147483647; left: 8px; top: 8px; width: min(370px, calc(100vw - 16px)); max-height: 76vh; overflow: auto; padding: 10px; border: 1px solid #b97526; border-radius: 9px; background: #fff8db; color: #48311d; box-shadow: 0 4px 18px #0002; font: 12px/1.5 sans-serif; }
+    #qa-panel summary { cursor: pointer; font-weight: 700; }
+    #qa-panel p { margin: 6px 0; }
+    #qa-panel .qa-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0; }
+    #qa-panel select, #qa-panel button { min-height: 32px; padding: 4px 7px; border: 1px solid #bfa87f; border-radius: 5px; background: white; color: inherit; font: inherit; }
+    #qa-panel output, #qa-panel pre { display: block; white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.6 monospace; }
+    #qa-panel pre { max-height: 160px; margin: 5px 0; overflow: auto; }
+    #qa-panel .qa-note { color: #685234; font-size: 10px; }
+  </style>
+</head>
+<body>
+  <details id="qa-panel" open>
+    <summary>【模拟验收】流式音频连续性 · 可折叠</summary>
+    <p>真实 App、本地种子医生资料，无运行中 API 依赖。合成回复与 4 秒静默音频；本页使用独立内存存储，不接触真实本地记录。</p>
+    <div class="qa-controls">
+      <label for="qa-scenario">场景</label>
+      <select id="qa-scenario">
+        <option value="normal">正常：识别 1.2 秒 / 思考 2 秒 / 静默播报 4 秒</option>
+        <option value="denied">拒绝麦克风：检查错误仍显示</option>
+      </select>
+      <button id="qa-reset" type="button">清除验收证据</button>
+      <button id="qa-inspect" type="button">检查输入提示状态</button>
+    </div>
+    <p class="qa-note">先关闭输入提示，再点“首页”→“问医生”，检查跨组件重载后仍隐藏（不要刷新页面）。正常场景录音后发送，依次检查识别、思考、播报状态；可点“停止播报”。切换“拒绝麦克风”后点话筒，检查错误仍显示。工具栏可折叠。</p>
+    <output id="qa-counts" aria-label="请求与播报次数"></output>
+    <output id="qa-checks" aria-label="提示条与内存关闭标记" aria-live="polite"></output>
+    <details open><summary>捕获的 TTS / 浏览器播报文字</summary><pre id="qa-speech"></pre></details>
+    <details><summary>最近请求记录</summary><pre id="qa-log"></pre></details>
+    <p id="qa-loading" role="status">正在加载真实 App…</p>
+  </details>
+  <output id="qa-continuity" aria-label="音频连续性证据" style="display:block;position:relative;white-space:pre-wrap;z-index:9999;background:white"></output><div id="root"></div>
+  <script type="module">
+    // Reuses the fake recording/playback approach from tang-voice-qa.html.
+    // All additions remain local to this separate, non-production fixture.
+    history.replaceState(null, '', '/d/tang-jinsong/ask');
+    const BODY = '【模拟验收】已收到测试消息。';
+    const CITATIONS = [];
+    const visitor = 'tang-hint-fixture';
+    class MemoryStorage {
+      entries = new Map();
+      get length() { return this.entries.size; }
+      key(index) { return [...this.entries.keys()][index] ?? null; }
+      getItem(key) { return this.entries.get(String(key)) ?? null; }
+      setItem(key, value) { this.entries.set(String(key), String(value)); }
+      removeItem(key) { this.entries.delete(String(key)); }
+      clear() { this.entries.clear(); }
+    }
+    const localMemory = new MemoryStorage();
+    const sessionMemory = new MemoryStorage();
+    localMemory.setItem('medtalent:visitor-id', visitor);
+    localMemory.setItem(`medtalent:${visitor}:tang-jinsong:privacy`, JSON.stringify({ saveChat: true, voicePlayback: true, reminders: false }));
+    Object.defineProperty(window, 'localStorage', { configurable: true, get: () => localMemory });
+    Object.defineProperty(window, 'sessionStorage', { configurable: true, get: () => sessionMemory });
+
+    const scenario = document.getElementById('qa-scenario');
+    const counts = { doctorSeed: 0, asr: 0, chatStream: 0, chatFallback: 0, ttsStream: 0, ttsFallback: 0, browserSpeech: 0, filePlay: 0, pcmPlay: 0, blocked: 0 };
+    const capturedSpeech = [];
+    const schedules = []; let ttsDone = false;
+    const logs = [];
+    const tracks = new Set();
+    function capture(channel, text) {
+      capturedSpeech.push({ channel, text });
+      render();
+    }
+    function log(text) { logs.push(`${new Date().toLocaleTimeString('zh-CN', { hour12: false })} ${text}`); render(); }
+    function inspectDom() {
+      const status = document.querySelector('#root .tang-voice-status');
+      const close = document.querySelector('#root [aria-label="关闭输入提示"]');
+      const key = `medtalent:${visitor}:tang-jinsong:voice-input-hint-dismissed`;
+      document.getElementById('qa-checks').textContent = `输入提示关闭按钮：${close ? '存在' : '不存在'}\n关闭标记（本页内存）：${localMemory.getItem(key) ?? '尚未保存'}\n活动提示条：${status ? status.className + ' · ' + status.textContent.trim() : '不存在'}`;
+    }
+    function render() {
+      document.getElementById('qa-counts').textContent = `本地种子GET=${counts.doctorSeed} ASR=${counts.asr} chat流=${counts.chatStream} chat回退=${counts.chatFallback}\nTTS流=${counts.ttsStream} TTS回退=${counts.ttsFallback} 浏览器=${counts.browserSpeech}\nPCM调度=${counts.pcmPlay} 文件播放=${counts.filePlay} activeTrack=${tracks.size} 阻止未知请求=${counts.blocked}`;
+      document.getElementById('qa-speech').textContent = capturedSpeech.map((item, index) => `${index + 1}. ${item.channel}\n${item.text}`).join('\n\n') || '尚未捕获播报调用。所有通道只做静默模拟。';
+      document.getElementById('qa-log').textContent = logs.slice(-10).join('\n');
+      document.getElementById('qa-continuity').textContent = JSON.stringify({schedules,peak:Math.max(0,...schedules.map(s=>s.peak)),gaps:schedules.slice(1).map((s,i)=>Math.round((s.at-schedules[i].at-schedules[i].duration)*1000)),ttsDone});
+      inspectDom();
+    }
+    document.getElementById('qa-reset').addEventListener('click', () => {
+      Object.keys(counts).forEach(key => { counts[key] = 0; });
+      capturedSpeech.length = 0; logs.length = 0; render();
+    });
+    document.getElementById('qa-inspect').addEventListener('click', inspectDom);
+    scenario.addEventListener('change', () => log(`场景：${scenario.selectedOptions[0].textContent}`));
+
+    const abortError = () => new DOMException('【模拟验收】已取消', 'AbortError');
+    const wait = (ms, signal) => new Promise((resolve, reject) => {
+      if (signal?.aborted) { reject(abortError()); return; }
+      const abort = () => { clearTimeout(timer); reject(abortError()); };
+      const timer = setTimeout(() => { signal?.removeEventListener('abort', abort); resolve(); }, ms);
+      signal?.addEventListener('abort', abort, { once: true });
+    });
+    const getUserMedia = async () => {
+      if (scenario.value === 'denied') {
+        log('【模拟验收】麦克风授权已拒绝；未访问真实麦克风。');
+        throw new DOMException('【模拟验收】麦克风权限被拒绝', 'NotAllowedError');
+      }
+      const track = { readyState: 'live', kind: 'audio', stop() { this.readyState = 'ended'; tracks.delete(this); render(); } };
+      tracks.add(track); render();
+      return { get active() { return track.readyState === 'live'; }, getTracks: () => [track], getAudioTracks: () => [track] };
+    };
+    if (navigator.mediaDevices) Object.defineProperty(navigator.mediaDevices, 'getUserMedia', { configurable: true, value: getUserMedia });
+    else Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia } });
+
+    class FakeAudioContext {
+      sampleRate = 48000; state = 'suspended'; destination = {}; startedAt = performance.now(); elapsed = 0; processors = new Set(); sources = new Set();
+      get currentTime() { return this.elapsed + (this.state === 'running' ? (performance.now() - this.startedAt) / 1000 : 0); }
+      async resume() { if (this.state !== 'running') { this.startedAt = performance.now(); this.state = 'running'; } }
+      async close() { this.elapsed = this.currentTime; this.state = 'closed'; this.processors.forEach(node => node.disconnect()); this.sources.forEach(node => node.stop()); }
+      createMediaStreamSource(stream) { return { connect(node) { node.stream = stream; }, disconnect() {} }; }
+      createScriptProcessor(size = 4096) {
+        const context = this;
+        const node = { stream: null, onaudioprocess: null, timer: null, connect() { this.timer = setInterval(() => { if (context.state === 'running' && this.stream?.active) this.onaudioprocess?.({ inputBuffer: { getChannelData: () => new Float32Array(size).fill(.12) } }); }, 80); }, disconnect() { clearInterval(this.timer); context.processors.delete(this); } };
+        this.processors.add(node); return node;
+      }
+      createBuffer(channels, length, rate) { const data = Array.from({ length: channels }, () => new Float32Array(length)); return { duration: length / rate, getChannelData: index => data[index] }; }
+      createBufferSource() {
+        const context = this;
+        const node = { buffer: null, onended: null, ended: false, timer: null, connect() {}, disconnect() {}, finish() { if (this.ended) return; this.ended = true; clearTimeout(this.timer); context.sources.delete(this); this.onended?.(); }, start(when = context.currentTime) { counts.pcmPlay += 1; schedules.push({ at: when, duration: this.buffer.duration, peak: Math.max(...this.buffer.getChannelData(0).map(Math.abs)), beforeDone: !ttsDone }); render(); this.timer = setTimeout(() => this.finish(), Math.max(0, when - context.currentTime + (this.buffer?.duration || 0)) * 1000); }, stop() { this.finish(); } };
+        this.sources.add(node); return node;
+      }
+    }
+    Object.defineProperty(window, 'AudioContext', { configurable: true, value: FakeAudioContext });
+    Object.defineProperty(window, 'webkitAudioContext', { configurable: true, value: FakeAudioContext });
+    class FakeAudio extends EventTarget {
+      constructor(src) { super(); this.src = src; }
+      play() { counts.filePlay += 1; render(); this.timer = setTimeout(() => this.dispatchEvent(new Event('ended')), 4000); return Promise.resolve(); }
+      pause() { clearTimeout(this.timer); }
+    }
+    Object.defineProperty(window, 'Audio', { configurable: true, value: FakeAudio });
+    class FakeUtterance { constructor(text) { this.text = text; } }
+    Object.defineProperty(window, 'SpeechSynthesisUtterance', { configurable: true, value: FakeUtterance });
+    let synthesisTimer;
+    Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: {
+      speak(utterance) { counts.browserSpeech += 1; capture('speechSynthesis.speak', utterance.text); synthesisTimer = setTimeout(() => utterance.onend?.(), 4000); },
+      cancel() { clearTimeout(synthesisTimer); }, getVoices() { return []; },
+    } });
+
+    // Load a local Vite module, never a running platform API or live directory.
+    const { doctorProfiles: seedDoctorProfiles } = await import('/src/data/doctorProfiles.ts');
+    const publicDoctorProfiles = seedDoctorProfiles.map(profile => ({ ...profile, version: 'synthetic-local-seed', content: [] }));
+    const encoder = new TextEncoder();
+    function stream(events, signal) {
+      return new Response(new ReadableStream({ async start(controller) {
+        try {
+          for (const { event, delay = 60 } of events) { await wait(delay, signal); if(event.type==='done' && !event.model){ttsDone=true;render();} controller.enqueue(encoder.encode(JSON.stringify(event) + '\n')); }
+          controller.close();
+        } catch (error) { controller.error(error); }
+      } }), { headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store' } });
+    }
+    function chatEvents() {
+      return [
+        { event: { type: 'meta', model: 'simulated-hint-qa' }, delay: 10 },
+        { event: { type: 'delta', text: BODY }, delay: 2000 },
+        { event: { type: 'done', model: 'simulated-hint-qa', citations: CITATIONS, retrievalMode: 'none' }, delay: 80 },
+      ];
+    }
+    window.fetch = async (input, init = {}) => {
+      const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url, location.href);
+      const pathname = url.pathname;
+      const method = (init.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
+      const signal = init.signal || (input instanceof Request ? input.signal : undefined);
+      const selected = scenario.value;
+      const mocked = ['/api/asr', '/api/chat/stream', '/api/chat', '/api/tts/stream', '/api/tts'].includes(pathname);
+      if (url.origin !== location.origin) {
+        counts.blocked += 1; log('已阻止外部请求。');
+        throw new Error('【模拟验收】禁止真实供应商或外部请求。');
+      }
+      if (signal?.aborted) throw abortError();
+      if (method === 'GET' && (pathname === '/api/doctors' || pathname.startsWith('/api/doctors/'))) {
+        counts.doctorSeed += 1; log(`${pathname} [本地种子资料·模拟验收]`);
+        if (pathname === '/api/doctors') return Response.json(publicDoctorProfiles);
+        let slug;
+        try { slug = decodeURIComponent(pathname.slice('/api/doctors/'.length)); } catch { slug = ''; }
+        const profile = publicDoctorProfiles.find(item => item.slug === slug);
+        return profile ? Response.json(profile) : Response.json({ error: '【模拟验收】本地种子中没有该医生' }, { status: 404 });
+      }
+      if (!mocked || method !== 'POST') {
+        counts.blocked += 1; log('已阻止未模拟的接口请求；未转发到真实 HTTP。');
+        return Response.json({ error: '【模拟验收】接口未模拟，禁止真实 HTTP 回退' }, { status: mocked ? 405 : 404 });
+      }
+      log(`${pathname} [${selected}]`);
+      if (pathname === '/api/asr') {
+        counts.asr += 1; render(); await wait(1200, signal);
+        return Response.json({ text: '【模拟验收】请检查活动状态提示。' });
+      }
+      if (pathname === '/api/chat/stream') {
+        counts.chatStream += 1; render();
+        return stream(chatEvents(), signal);
+      }
+      if (pathname === '/api/chat') {
+        counts.chatFallback += 1; render(); await wait(2000, signal);
+        return Response.json({ reply: BODY, citations: CITATIONS, retrievalMode: 'none' });
+      }
+      let payload;
+      try { payload = JSON.parse(init.body || (input instanceof Request ? await input.clone().text() : '{}')); } catch { payload = {}; }
+      if (pathname === '/api/tts/stream') {
+        counts.ttsStream += 1; capture('/api/tts/stream', String(payload.text || ''));
+        const prefix=Uint8Array.from('52494646bfffff7f57415645666d74201000000001000100c05d000080bb000002001000646174619bffff7f'.match(/../g),v=>parseInt(v,16));
+        ttsDone=false;
+        return stream(Array.from({length:24},(_,index)=>({event:{type:'audio',data:btoa((index===0?String.fromCharCode(...prefix):'')+'\0'.repeat(2400)),sampleRate:24000},delay:index===0?60:[65,35,50,60,40][index%5]})).concat([{event:{type:'done'},delay:80}]),signal);
+      }
+      counts.ttsFallback += 1; capture('/api/tts', String(payload.text || ''));
+      await wait(60, signal);
+      return new Response(new Uint8Array(44), { headers: { 'Content-Type': 'audio/wav' } });
+    };
+
+    const observer = new MutationObserver(inspectDom);
+    observer.observe(document.getElementById('root'), { childList: true, characterData: true, attributes: true, subtree: true });
+    render();
+    try {
+      await import('/src/main.tsx');
+      document.getElementById('qa-loading').textContent = '夹具已就绪。切换场景后使用真实页面按钮；所有音频静默模拟。';
+    } catch (error) {
+      document.getElementById('qa-loading').textContent = `App 加载失败：${error.message}`;
+      throw error;
+    }
+  </script>
+</body>
+</html>

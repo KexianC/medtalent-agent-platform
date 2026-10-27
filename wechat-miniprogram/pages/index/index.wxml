@@ -1,0 +1,20 @@
+<view class="page home">
+  <view class="brand"><image src="/assets/medtalent-logo.png" mode="aspectFit" /><text>{{appName}}</text></view>
+  <view class="hero">
+    <view class="eyebrow">健康知识 · 随时可问</view>
+    <view class="headline">让专业知识<view>更贴近你的生活</view></view>
+    <view class="intro muted">找到适合自己的智能体，了解健康知识，记录日常变化，为就医做好准备。</view>
+  </view>
+  <view class="card features">
+    <view class="feature"><view class="feature-icon">知</view><view><view class="feature-title">浏览健康科普</view><view class="feature-desc">按主题与专业方向，发现感兴趣的内容</view></view></view>
+    <view class="feature"><view class="feature-icon">问</view><view><view class="feature-title">与智能体对话</view><view class="feature-desc">围绕你的问题，获取易懂的知识解答</view></view></view>
+    <view class="feature"><view class="feature-icon">记</view><view><view class="feature-title">管理日常记录</view><view class="feature-desc">记录健康变化，自主选择是否用于问答</view></view></view>
+  </view>
+  <button class="primary enter" bindtap="openPlatform" loading="{{opening}}" disabled="{{opening}}">进入智能体应用 <text class="arrow">→</text></button>
+  <view class="notice">内容由人工智能生成，仅供健康科普参考。<view>不提供诊断、处方或替代医生诊疗。</view></view>
+  <view class="links">
+    <navigator url="/pages/policy/index?type=privacy">隐私说明</navigator>
+    <navigator url="/pages/policy/index?type=terms">使用须知</navigator>
+    <navigator url="/pages/about/index">关于与帮助</navigator>
+  </view>
+</view>

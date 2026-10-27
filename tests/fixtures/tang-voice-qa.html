@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>【模拟验收】唐劲松交互夹具</title>
+    <style>
+      #qa-panel { position: fixed; z-index: 2147483647; left: 8px; top: 8px; width: min(350px, calc(100vw - 16px)); max-height: 76vh; overflow: auto; padding: 10px; border: 1px solid #b97526; border-radius: 9px; background: #fff8db; box-shadow: 0 4px 18px #0002; color: #48311d; font: 12px/1.5 sans-serif; }
+      #qa-panel summary { cursor: pointer; font-weight: 700; }
+      #qa-panel p { margin: 5px 0; }
+      #qa-panel .qa-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 7px 0; }
+      #qa-panel select, #qa-panel button { min-height: 32px; border: 1px solid #bfa87f; border-radius: 5px; background: white; padding: 4px 7px; color: #48311d; font: inherit; }
+      #qa-panel output { display: block; white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.6 monospace; }
+      #qa-panel pre { max-height: 90px; margin: 5px 0 0; overflow: auto; white-space: pre-wrap; font: 10px/1.5 monospace; }
+      #qa-panel #qa-timing { padding: 7px 0; border-top: 1px solid #d6c599; }
+      #qa-panel #qa-timeline { max-height: 160px; }
+      #qa-panel .qa-note { color: #685234; font-size: 10px; }
+    </style>
+  </head>
+  <body>
+    <details id="qa-panel" open>
+      <summary>【模拟验收】语音夹具 · 可折叠</summary>
+      <p>真实 App 与本地医生资料；音频、识别、回复均为合成测试。无真实麦克风、无真实模型调用。</p>
+      <div class="qa-controls">
+        <label for="qa-scenario">场景</label>
+        <select id="qa-scenario">
+          <option value="normal">正常</option>
+          <option value="denied">拒绝麦克风</option>
+          <option value="permission-delay">延迟授权（4 秒）</option>
+          <option value="asr-failure">ASR 失败</option>
+          <option value="asr-delay">ASR 延迟（4 秒）</option>
+          <option value="chat-failure">对话失败</option>
+          <option value="chat-delay">对话延迟（4 秒）</option>
+          <option value="tts-failure">TTS 失败</option>
+          <option value="slow-text">慢速文字流（4 字 / 250ms）</option>
+          <option value="short-first">短首句后停顿（1.8 秒）</option>
+          <option value="no-punctuation">无标点首段后停顿（2.2 秒）</option>
+          <option value="early-audio">音频首帧早到、done 延迟（4 秒）</option>
+          <option value="multi-audio">每次 TTS 返回 4 段 PCM</option>
+          <option value="stop-playback">停止播报中断（长音频 / 慢文字）</option>
+          <option value="text-done-long-audio">短文字完成后继续播报（8 秒 PCM）</option>
+          <option value="audio-blocked">声音播放受阻（需解除限制后恢复）</option>
+          <option value="audio-stalled">播放时钟冻结（模拟卡住）</option>
+        </select>
+        <button id="qa-reset" type="button">清计数</button>
+      </div>
+      <div class="qa-controls">
+        <button id="qa-suspend-audio" type="button">暂停播放时钟</button>
+        <button id="qa-freeze-audio" type="button">冻结播放时钟</button>
+        <button id="qa-resume-audio" type="button">解除限制并恢复时钟</button>
+      </div>
+      <output id="qa-audio-state" aria-label="模拟声音播放状态" aria-live="polite"></output>
+      <output id="qa-counts" aria-label="模拟验收计数" aria-live="polite"></output>
+      <p class="qa-note">保持页面“播报开”，点击话筒开始合成录音，再点“说完了，发送”。每次 chat 请求自动开始独立计时；PCM 指标表示播放器调度，无真实声音。</p>
+      <p class="qa-note">短文字／受阻／冻结场景可直接打字发送。解除限制后，再点击真实页面的“恢复播报”重试。所有声音与系统朗读始终为静音模拟。</p>
+      <output id="qa-timing" aria-label="本轮流式播报计时证据" aria-live="polite"></output>
+      <details open><summary>本轮事件时间线（相对 chat 请求）</summary><pre id="qa-timeline"></pre></details>
+      <details><summary>最近 3 轮摘要</summary><pre id="qa-history"></pre></details>
+      <details><summary>最近模拟请求</summary><pre id="qa-log"></pre></details>
+      <p id="qa-loading" role="status">正在加载真实 App…</p>
+    </details>
+    <div id="root"></div>
+    <script type="module">
+      // This fixture is deliberately outside src/ and is never a production entry.
+      // Changing the visible route lets the real router render the actual AskPanel.
+      history.replaceState(null, '', '/d/tang-jinsong/ask');
+
+      const scenarioSelect = document.getElementById('qa-scenario');
+      const countsElement = document.getElementById('qa-counts');
+      const logsElement = document.getElementById('qa-log');
+      const timingElement = document.getElementById('qa-timing');
+      const timelineElement = document.getElementById('qa-timeline');
+      const historyElement = document.getElementById('qa-history');
+      const audioStateElement = document.getElementById('qa-audio-state');
+      const counts = { permission: 0, asr: 0, chat: 0, tts: 0, aborted: 0, silentFallback: 0 };
+      const tracks = new Set();
+      const playingSources = new Set();
+      const audioContexts = new Set();
+      let audioResumeBlocked = false;
+      let audioClockFrozen = false;
+      const logs = [];
+      let pendingPermission = 0;
+      let roundSequence = 0;
+      let currentRound = null;
+      const rounds = [];
+      const audioFrameMetadata = new Map();
+      let frameSequence = 0;
+
+      const elapsed = round => Math.round(performance.now() - round.startedAt);
+      const milliseconds = value => value === undefined ? '等待中' : `+${value}ms`;
+      function eventAt(round, label, key) {
+        if (!round) return;
+        const time = elapsed(round);
+        if (key && round.marks[key] !== undefined) return;
+        if (key) round.marks[key] = time;
+        round.events.push({ time, label });
+        render();
+      }
+      function beginRound(scenario) {
+        currentRound = { id: ++roundSequence, scenario, startedAt: performance.now(), marks: {}, events: [], requests: [], pcmCount: 0, stoppedCount: 0, lateSchedules: 0, lateTtsRequests: 0 };
+        rounds.push(currentRound);
+        if (rounds.length > 3) rounds.shift();
+        eventAt(currentRound, `第 ${currentRound.id} 轮 chat 请求；${scenario}`, 'chatRequest');
+        return currentRound;
+      }
+      function comparison(round, finish, label) {
+        const played = round.marks.firstPcm;
+        if (played === undefined) return `${label}: 等待首 PCM 调度`;
+        if (finish === undefined) return `${label}: 已调度，仍待 done`;
+        return `${label}: ${played < finish ? 'PASS' : 'FAIL'} (${played} < ${finish}ms)`;
+      }
+      function renderTiming() {
+        if (!currentRound) {
+          timingElement.textContent = '尚未开始问答。每次 /api/chat/stream 独立计时。';
+          timelineElement.textContent = '';
+          historyElement.textContent = '';
+          return;
+        }
+        const round = currentRound;
+        const firstPlayedRequest = round.requests.find(request => request.id === round.firstPcmRequestId);
+        const playing = [...playingSources].filter(source => source.qaFrame?.round === round).length;
+        timingElement.textContent = [
+          `第 ${round.id} 轮 · ${round.scenario}`,
+          `首文字 delta: ${milliseconds(round.marks.firstDelta)}`,
+          `首 TTS 请求: ${milliseconds(round.marks.firstTts)}`,
+          `首 PCM 调度: ${milliseconds(round.marks.firstPcm)}`,
+          `chat done: ${milliseconds(round.marks.chatDone)}${round.marks.chatAborted === undefined ? '' : `（已取消 ${milliseconds(round.marks.chatAborted)}）`}`,
+          `首播放对应 TTS done: ${milliseconds(firstPlayedRequest?.done)}`,
+          comparison(round, round.marks.chatDone, 'PCM < chat done'),
+          comparison(round, firstPlayedRequest?.done, 'PCM < TTS done'),
+          `PCM 段=${round.pcmCount} 播放中=${playing} 已停止=${round.stoppedCount}`,
+          `停止时刻=${milliseconds(round.marks.stopped)} 停止后新调度=${round.lateSchedules} 新TTS=${round.lateTtsRequests}`,
+          ...round.requests.map(request => `TTS #${request.id}: 请求${milliseconds(request.requested)} / 调度${milliseconds(request.scheduled)} / done${milliseconds(request.done)}${request.aborted === undefined ? '' : ` / abort${milliseconds(request.aborted)}`}`),
+        ].join('\n');
+        timelineElement.textContent = round.events.slice(-32).map(event => `${String(event.time).padStart(5)}ms  ${event.label}`).join('\n');
+        historyElement.textContent = rounds.slice().reverse().map(previous => {
+          const request = previous.requests.find(item => item.id === previous.firstPcmRequestId);
+          return `第 ${previous.id} 轮 ${previous.scenario}\ndelta ${milliseconds(previous.marks.firstDelta)} / PCM ${milliseconds(previous.marks.firstPcm)} / chat done ${milliseconds(previous.marks.chatDone)} / TTS done ${milliseconds(request?.done)}\n停止后调度 ${previous.lateSchedules}，停止后TTS ${previous.lateTtsRequests}`;
+        }).join('\n\n');
+      }
+
+      function render() {
+        countsElement.textContent = `permission=${counts.permission} pending=${pendingPermission} activeTrack=${tracks.size}\nASR=${counts.asr} chat=${counts.chat} TTS=${counts.tts} aborted=${counts.aborted} playing=${playingSources.size} silentFallback=${counts.silentFallback}`;
+        const playbackContexts = [...audioContexts].filter(context => context.qaRole !== 'recorder');
+        audioStateElement.textContent = `模拟声音：${audioResumeBlocked ? '恢复被阻止' : '允许恢复'} / ${audioClockFrozen ? '时钟冻结' : '时钟可推进'}\n播放上下文：${playbackContexts.length ? playbackContexts.map(context => `${context.state}${context.clockFrozen ? '（冻结）' : ''} ${context.currentTime.toFixed(2)}秒`).join('；') : '尚未创建'}`;
+        logsElement.textContent = logs.slice(-8).join('\n');
+        renderTiming();
+      }
+      function log(text) { logs.push(`${new Date().toLocaleTimeString('zh-CN', { hour12: false })} ${text}`); render(); }
+      const abortError = () => new DOMException('【模拟验收】请求已取消', 'AbortError');
+      const wait = (ms, signal) => new Promise((resolve, reject) => {
+        if (signal?.aborted) { reject(abortError()); return; }
+        const timer = setTimeout(() => { signal?.removeEventListener('abort', abort); resolve(); }, ms);
+        const abort = () => { clearTimeout(timer); reject(abortError()); };
+        signal?.addEventListener('abort', abort, { once: true });
+      });
+      document.getElementById('qa-reset').addEventListener('click', () => {
+        Object.keys(counts).forEach(key => { counts[key] = 0; });
+        logs.length = 0;
+        log('已清计数；本轮时间线保留，下一次问答自动重新计时。');
+      });
+      scenarioSelect.addEventListener('change', () => {
+        audioResumeBlocked = scenarioSelect.value === 'audio-blocked';
+        audioClockFrozen = scenarioSelect.value === 'audio-stalled';
+        for (const context of audioContexts) {
+          if (context.qaRole === 'recorder') continue;
+          context.setFrozen(audioClockFrozen);
+          if (audioResumeBlocked) void context.suspend();
+        }
+        log(`场景改为 ${scenarioSelect.selectedOptions[0].textContent}`);
+      });
+      document.getElementById('qa-suspend-audio').addEventListener('click', () => {
+        for (const context of audioContexts) if (context.qaRole !== 'recorder') void context.suspend();
+        eventAt(currentRound, '验收按钮暂停播放上下文');
+        log('已模拟暂停；真实 App 应显示恢复播报提示。');
+      });
+      document.getElementById('qa-freeze-audio').addEventListener('click', () => {
+        audioClockFrozen = true;
+        for (const context of audioContexts) if (context.qaRole !== 'recorder') context.setFrozen(true);
+        eventAt(currentRound, '验收按钮冻结播放时钟（state 仍为 running）');
+        log('已模拟时钟冻结；真实 App 应在有界等待后提示恢复。');
+      });
+      document.getElementById('qa-resume-audio').addEventListener('click', () => {
+        audioResumeBlocked = false;
+        audioClockFrozen = false;
+        for (const context of audioContexts) {
+          if (context.qaRole === 'recorder') continue;
+          context.setFrozen(false);
+          void context.resume();
+        }
+        eventAt(currentRound, '验收按钮解除阻止并恢复播放时钟');
+        log('已解除模拟限制；可点击真实 App 的恢复播报重试。');
+      });
+
+      const getUserMedia = async () => {
+        const scenario = scenarioSelect.value;
+        counts.permission += 1;
+        pendingPermission += 1;
+        log(`getUserMedia: ${scenario}`);
+        try {
+          if (scenario === 'permission-delay') await wait(4000);
+          if (scenario === 'denied') throw new DOMException('【模拟验收】麦克风授权被拒绝', 'NotAllowedError');
+          const track = {
+            kind: 'audio', enabled: true, muted: false, readyState: 'live',
+            stop() {
+              if (this.readyState === 'ended') return;
+              this.readyState = 'ended';
+              tracks.delete(this);
+              log('audio track stopped');
+            },
+            getSettings() { return { channelCount: 1, sampleRate: 48000 }; },
+            addEventListener() {}, removeEventListener() {},
+          };
+          tracks.add(track);
+          log('audio track acquired');
+          return {
+            get active() { return track.readyState === 'live'; },
+            getTracks: () => [track], getAudioTracks: () => [track], getVideoTracks: () => [],
+          };
+        } finally { pendingPermission -= 1; render(); }
+      };
+      const originalMediaDevices = navigator.mediaDevices;
+      if (originalMediaDevices) Object.defineProperty(originalMediaDevices, 'getUserMedia', { configurable: true, value: getUserMedia });
+      else Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia } });
+
+      class FakeAudioContext {
+        sampleRate = 48000;
+        state = 'suspended';
+        destination = {};
+        startedAt = performance.now();
+        elapsed = 0;
+        processors = new Set();
+        sources = new Set();
+        qaRole = 'playback';
+        clockFrozen = audioClockFrozen;
+        onstatechange = null;
+        constructor() { audioContexts.add(this); }
+        get currentTime() { return this.elapsed + (this.state === 'running' && !this.clockFrozen ? (performance.now() - this.startedAt) / 1000 : 0); }
+        changeState(state) {
+          if (this.state === state) return;
+          this.elapsed = this.currentTime;
+          this.startedAt = performance.now();
+          this.state = state;
+          this.onstatechange?.({ type: 'statechange', target: this });
+          render();
+        }
+        setFrozen(frozen) {
+          if (this.clockFrozen === frozen) return;
+          this.elapsed = this.currentTime;
+          this.startedAt = performance.now();
+          this.clockFrozen = frozen;
+          render();
+        }
+        async resume() {
+          if (this.state === 'closed') throw new Error('closed');
+          if (audioResumeBlocked && this.qaRole !== 'recorder') {
+            this.changeState('suspended');
+            log('AudioContext.resume: simulated blocked');
+            return;
+          }
+          this.changeState('running');
+        }
+        async suspend() { if (this.state !== 'closed') this.changeState('suspended'); }
+        async close() {
+          this.changeState('closed');
+          this.processors.forEach(processor => processor.disconnect());
+          this.sources.forEach(source => source.stop());
+          audioContexts.delete(this);
+          render();
+        }
+        createMediaStreamSource(stream) {
+          // Recorder clocks keep working while playback-only failure modes are active.
+          this.qaRole = 'recorder';
+          this.setFrozen(false);
+          this.changeState('running');
+          return { connect(node) { node.stream = stream; return node; }, disconnect() {} };
+        }
+        createScriptProcessor(size = 4096) {
+          const context = this;
+          const processor = {
+            onaudioprocess: null, stream: null, timer: null,
+            connect() {
+              if (this.timer) return;
+              this.timer = setInterval(() => {
+                if (context.state !== 'running' || !this.stream?.active) return;
+                const samples = Float32Array.from({ length: size }, (_, index) => Math.sin(index * 0.07) * 0.2);
+                this.onaudioprocess?.({ inputBuffer: { getChannelData: () => samples } });
+              }, Math.max(20, Math.round(size / context.sampleRate * 1000)));
+              return context.destination;
+            },
+            disconnect() { clearInterval(this.timer); this.timer = null; context.processors.delete(this); },
+          };
+          this.processors.add(processor);
+          return processor;
+        }
+        createBuffer(channels, length, rate) {
+          const buffers = Array.from({ length: channels }, () => new Float32Array(length));
+          const qaFrame = audioFrameMetadata.get(length);
+          audioFrameMetadata.delete(length);
+          return { duration: length / rate, length, sampleRate: rate, numberOfChannels: channels, qaFrame, getChannelData: index => buffers[index] };
+        }
+        createBufferSource() {
+          const context = this;
+          const source = {
+            buffer: null, onended: null, timer: null, ended: false, qaFrame: null, endsAt: null,
+            connect(node) { return node; }, disconnect() {},
+            finish() { if (this.ended) return; this.ended = true; clearTimeout(this.timer); context.sources.delete(this); playingSources.delete(this); render(); this.onended?.(); },
+            start(when = context.currentTime) {
+              this.qaFrame = this.buffer?.qaFrame;
+              playingSources.add(this);
+              const frame = this.qaFrame;
+              if (frame) {
+                const { round, request, frameId } = frame;
+                round.pcmCount += 1;
+                if (round.marks.stopped !== undefined) round.lateSchedules += 1;
+                if (request.scheduled === undefined) request.scheduled = elapsed(round);
+                if (round.marks.firstPcm === undefined) {
+                  round.firstPcmRequestId = request.id;
+                  eventAt(round, `首 PCM 播放调度（TTS #${request.id}，frame ${frameId}）`, 'firstPcm');
+                } else eventAt(round, `PCM 播放调度（TTS #${request.id}，frame ${frameId}）`);
+              }
+              render();
+              this.endsAt = Math.max(when, context.currentTime) + (this.buffer?.duration || 0);
+              const checkTimeline = () => {
+                if (this.ended) return;
+                if (context.state === 'running' && !context.clockFrozen && context.currentTime >= this.endsAt) { this.finish(); return; }
+                this.timer = setTimeout(checkTimeline, 50);
+              };
+              this.timer = setTimeout(checkTimeline, 50);
+            },
+            stop() {
+              if (!this.ended && this.qaFrame) {
+                const { round, request } = this.qaFrame;
+                round.stoppedCount += 1;
+                eventAt(round, `停止 PCM（TTS #${request.id}）`, round.marks.stopped === undefined ? 'stopped' : undefined);
+              }
+              this.finish();
+            },
+          };
+          this.sources.add(source);
+          return source;
+        }
+      }
+      Object.defineProperty(window, 'AudioContext', { configurable: true, value: FakeAudioContext });
+      Object.defineProperty(window, 'webkitAudioContext', { configurable: true, value: FakeAudioContext });
+
+      // Cover the production fallback without making the host speak in failure QA.
+      if (window.speechSynthesis) {
+        const silentUtterances = new Map();
+        Object.defineProperty(window.speechSynthesis, 'cancel', { configurable: true, value() {
+          for (const timers of silentUtterances.values()) timers.forEach(clearTimeout);
+          silentUtterances.clear();
+        } });
+        Object.defineProperty(window.speechSynthesis, 'speak', { configurable: true, value(utterance) {
+          counts.silentFallback += 1;
+          const timers = [];
+          silentUtterances.set(utterance, timers);
+          if (scenarioSelect.value === 'tts-failure') {
+            log('speechSynthesis fallback: simulated synthesis-failed (silent)');
+            timers.push(setTimeout(() => { silentUtterances.delete(utterance); utterance.onerror?.({ error: 'synthesis-failed', utterance }); }, 60));
+          } else {
+            log('speechSynthesis fallback: simulated silent playback');
+            timers.push(setTimeout(() => { utterance.onstart?.({ type: 'start', utterance }); }, 40));
+            timers.push(setTimeout(() => { silentUtterances.delete(utterance); utterance.onend?.({ type: 'end', utterance }); }, 250));
+          }
+        } });
+      }
+
+      const nativeFetch = window.fetch.bind(window);
+      const encoder = new TextEncoder();
+      const mockTranscript = '【模拟验收】这是一条合成语音测试消息，用于检查说完后自动发送。';
+      const mockReply = '【模拟验收】已收到这条合成测试消息。页面已经完成自动发送与回复展示，这段内容只用于检查交互流程。';
+      const slowReply = '【模拟验收】收到测试消息。现在按四个字一段缓慢输出，观察前面的文字能否先开始播报。后续文字仍在持续追加，请留意上方的首文字、首音频调度和完成时间。所有内容仅用于交互测试，不是真实咨询回复。';
+      const shortReply = '【模拟验收】文字完成可边听边写。';
+      const deltas = (text, size = 4, delay = 250) => Array.from({ length: Math.ceil(text.length / size) }, (_, index) => ({ event: { type: 'delta', text: text.slice(index * size, (index + 1) * size) }, delay }));
+      const metaEvent = { event: { type: 'meta', model: 'simulated-qa' }, delay: 40 };
+      const doneEvent = { event: { type: 'done', model: 'simulated-qa', retrievalMode: 'none', citations: [] }, delay: 250 };
+      function chatEvents(scenario) {
+        if (['text-done-long-audio', 'audio-blocked', 'audio-stalled'].includes(scenario)) {
+          return [metaEvent, { event: { type: 'delta', text: shortReply }, delay: 80 }, { ...doneEvent, delay: 120 }];
+        }
+        if (['slow-text', 'early-audio', 'multi-audio', 'stop-playback'].includes(scenario)) {
+          return [metaEvent, ...deltas(scenario === 'stop-playback' ? slowReply.repeat(2) : slowReply), doneEvent];
+        }
+        if (scenario === 'short-first') {
+          const continuation = deltas('随后这一段文字继续慢慢输出，用来验证短首句没有等待整段回答结束才开始播报。');
+          continuation[0].delay = 1800;
+          return [metaEvent, { event: { type: 'delta', text: '【模拟验收】好。' }, delay: 100 }, ...continuation, doneEvent];
+        }
+        if (scenario === 'no-punctuation') {
+          const initial = deltas('【模拟验收】这一段没有标点', 4);
+          const continuation = deltas('接下来仍然没有标点并继续追加文字用来验证一段时间没有新字符时已经出现的内容能否先播放而不是等到全部结束', 5);
+          continuation[0].delay = 2200;
+          return [metaEvent, ...initial, ...continuation, doneEvent];
+        }
+        return [{ type: 'meta', model: 'simulated-qa' }, { type: 'delta', text: mockReply.slice(0, 26) }, { type: 'delta', text: mockReply.slice(26) }, { type: 'done', model: 'simulated-qa', retrievalMode: 'none', citations: [] }];
+      }
+      function audioFrame(round, request, seconds, delay) {
+        const frameId = ++frameSequence;
+        // A unique length carries fixture metadata into createBuffer without
+        // reading application internals or changing production code.
+        const frames = Math.round(24000 * seconds) + frameId;
+        audioFrameMetadata.set(frames, { round, request, frameId });
+        return { event: { type: 'audio', data: btoa('\0'.repeat(frames * 2)), sampleRate: 24000 }, delay };
+      }
+      function audioEvents(scenario, round, request) {
+        if (['text-done-long-audio', 'audio-blocked', 'audio-stalled'].includes(scenario)) return [audioFrame(round, request, 8, 80), { event: { type: 'done' }, delay: 100 }];
+        if (scenario === 'early-audio') return [audioFrame(round, request, 1, 80), { event: { type: 'done' }, delay: 4000 }];
+        if (scenario === 'multi-audio') return [audioFrame(round, request, .45, 80), ...Array.from({ length: 3 }, () => audioFrame(round, request, .45, 220)), { event: { type: 'done' }, delay: 250 }];
+        if (scenario === 'stop-playback') return [audioFrame(round, request, 8, 80), audioFrame(round, request, 2, 1800), audioFrame(round, request, 2, 1800), { event: { type: 'done' }, delay: 3000 }];
+        return [audioFrame(round, request, 1, 100), { event: { type: 'done' }, delay: 100 }];
+      }
+
+      function mockStream(events, signal, interval = 180, cleanup = () => {}, onEvent = () => {}) {
+        return new Response(new ReadableStream({
+          async start(controller) {
+            try {
+              for (const item of events) {
+                const event = item.event || item;
+                await wait(item.delay ?? interval, signal);
+                onEvent(event);
+                controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'));
+              }
+              controller.close();
+            } catch (error) { controller.error(error); }
+            finally { cleanup(); }
+          },
+        }), { status: 200, headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store' } });
+      }
+
+      window.fetch = async (input, init = {}) => {
+        const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url, location.href);
+        const path = url.pathname;
+        const mock = url.origin === location.origin && (path === '/api/asr' || path === '/api/chat/stream' || path === '/api/tts' || path.startsWith('/api/tts/'));
+        if (!mock) return nativeFetch(input, init);
+
+        const signal = init.signal || (input instanceof Request ? input.signal : undefined);
+        const scenario = scenarioSelect.value;
+        const kind = path === '/api/asr' ? 'asr' : path === '/api/chat/stream' ? 'chat' : 'tts';
+        const round = kind === 'chat' ? beginRound(scenario) : kind === 'tts' ? currentRound || beginRound('manual-playback') : null;
+        let ttsRequest;
+        if (kind === 'tts') {
+          ttsRequest = { id: round.requests.length + 1, requested: elapsed(round) };
+          round.requests.push(ttsRequest);
+          if (round.marks.stopped !== undefined) round.lateTtsRequests += 1;
+          eventAt(round, `TTS #${ttsRequest.id} 请求 ${path}`, round.marks.firstTts === undefined ? 'firstTts' : undefined);
+        }
+        counts[kind] += 1;
+        log(`${path} [${scenario}]`);
+        const onAbort = () => {
+          counts.aborted += 1;
+          if (ttsRequest) {
+            ttsRequest.aborted = elapsed(round);
+            eventAt(round, `TTS #${ttsRequest.id} abort`);
+          } else if (kind === 'chat') eventAt(round, 'chat abort', 'chatAborted');
+          log(`${path} aborted`);
+        };
+        const cleanup = () => signal?.removeEventListener('abort', onAbort);
+        signal?.addEventListener('abort', onAbort, { once: true });
+        if (signal?.aborted) { cleanup(); onAbort(); throw abortError(); }
+
+        if (path === '/api/asr') {
+          try {
+            await wait(scenario === 'asr-delay' ? 4000 : 250, signal);
+            return Response.json(scenario === 'asr-failure' ? { error: '【模拟验收】语音识别服务暂时不可用，请重试。' } : { text: mockTranscript }, { status: scenario === 'asr-failure' ? 503 : 200 });
+          } finally { cleanup(); }
+        }
+        if (path === '/api/chat/stream') {
+          if (scenario === 'chat-failure') {
+            try {
+              await wait(250, signal);
+              return Response.json({ error: '【模拟验收】对话服务暂时不可用。' }, { status: 503 });
+            } finally { cleanup(); }
+          }
+          if (scenario === 'chat-delay') {
+            try { await wait(4000, signal); }
+            catch (error) { cleanup(); throw error; }
+          }
+          return mockStream(chatEvents(scenario), signal, 220, cleanup, event => {
+            if (event.type === 'delta') eventAt(round, `文字 delta（${event.text.length} 字）`, round.marks.firstDelta === undefined ? 'firstDelta' : undefined);
+            if (event.type === 'done') eventAt(round, 'chat done', 'chatDone');
+          });
+        }
+        if (scenario === 'tts-failure') {
+          try {
+            await wait(150, signal);
+            return Response.json({ error: '【模拟验收】语音合成失败。' }, { status: 503 });
+          } finally { cleanup(); }
+        }
+        return mockStream(audioEvents(scenario, round, ttsRequest), signal, 100, cleanup, event => {
+          if (event.type === 'audio') {
+            if (ttsRequest.firstFrame === undefined) ttsRequest.firstFrame = elapsed(round);
+            eventAt(round, `TTS #${ttsRequest.id} PCM 到达`);
+          }
+          if (event.type === 'done') {
+            ttsRequest.done = elapsed(round);
+            eventAt(round, `TTS #${ttsRequest.id} done`);
+          }
+        });
+      };
+
+      render();
+      try {
+        await import('/src/main.tsx');
+        document.getElementById('qa-loading').textContent = '夹具已就绪。用页面上的语音按钮操作；计数清零不清除对话。';
+      } catch (error) {
+        document.getElementById('qa-loading').textContent = `加载失败：${error.message}`;
+        throw error;
+      }
+    </script>
+  </body>
+</html>

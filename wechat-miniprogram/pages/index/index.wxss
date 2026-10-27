@@ -1,0 +1,14 @@
+.home { max-width: 900rpx; margin: 0 auto; }
+.hero { padding: 64rpx 0 40rpx; }
+.eyebrow { color: #2672e8; font-weight: 500; font-size: 26rpx; letter-spacing: 3rpx; margin-bottom: 24rpx; }
+.headline { font-size: 56rpx; line-height: 1.4; font-weight: 600; letter-spacing: -1rpx; }
+.intro { margin-top: 24rpx; font-size: 28rpx; }
+.features { padding: 12rpx 30rpx; }
+.feature { display: flex; align-items: center; gap: 24rpx; padding: 26rpx 0; }
+.feature + .feature { border-top: 1rpx solid #edf1f7; }
+.feature-icon { flex-shrink: 0; width: 64rpx; height: 64rpx; border-radius: 20rpx; background: #eef4ff; color: #2672e8; text-align: center; line-height: 64rpx; font-size: 28rpx; }
+.feature-title { font-weight: 600; font-size: 29rpx; }
+.feature-desc { font-size: 24rpx; color: #64748b; line-height: 1.6; margin-top: 8rpx; }
+.enter { margin-top: 40rpx; }
+.arrow { margin-left: 20rpx; }
+.notice { text-align: center; color: #718096; font-size: 23rpx; line-height: 1.8; margin: 24rpx 0 12rpx; }

@@ -1,0 +1,94 @@
+.yw-record-editor, .yw-record-report, .yw-record-history { color: var(--journey-ink, #38334e); }
+.yw-record-intro { margin: 0 0 22px; }
+.yw-record-intro > span { display: block; color: var(--journey-accent, #7d72ad); font-size: 10px; font-weight: 700; letter-spacing: 1.8px; }
+.yw-record-intro h2 { margin: 8px 0; font-size: 24px; line-height: 1.35; }
+.yw-record-intro p { color: #797286; font-size: 13px; line-height: 1.8; margin: 0; }
+.yw-record-date { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
+.yw-record-date label { display: grid; gap: 8px; min-width: 0; flex: 1; font-size: 12px; font-weight: 600; }
+.yw-record-date input, .yw-record-chart-select select, .yw-record-association select { min-height: 43px; min-width: 0; border: 1px solid #ded9e8; border-radius: 12px; background: white; padding: 8px 11px; color: inherit; font: inherit; }
+.yw-record-date button, .yw-record-edit-actions button, .yw-record-confirm button { min-height: 42px; border: 1px solid #ddd6eb; border-radius: 12px; padding: 9px 12px; color: #675591; background: #f4f0fa; font-size: 12px; cursor: pointer; }
+.yw-record-date button:disabled { opacity: .5; cursor: default; }
+.yw-record-form-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.yw-record-form-heading h3 { margin: 0; font-size: 16px; }
+.yw-record-form-heading > span { color: #82798f; font-size: 11px; flex-shrink: 0; }
+.yw-record-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 17px 12px; }
+.yw-record-field { min-width: 0; display: block; }
+.yw-record-field > span, .yw-record-writing label > span { display: block; margin-bottom: 8px; font-size: 12px; font-weight: 600; }
+.yw-record-field > div { display: flex; align-items: center; min-height: 45px; border: 1px solid #e1dcea; background: #fff; border-radius: 12px; padding: 0 10px; }
+.yw-record-field input { width: 100%; min-width: 0; border: 0; outline: 0; padding: 11px 0; background: transparent; color: inherit; font-size: 16px; line-height: 1.3; }
+.yw-record-field input::placeholder { color: #aba4b4; font-size: 12px; }
+.yw-record-field em { font-style: normal; font-size: 10px; color: #82798e; flex-shrink: 0; white-space: nowrap; margin-left: 4px; }
+.yw-record-field > small { display: block; margin-top: 5px; font-size: 10px; color: #867e92; line-height: 1.5; }
+.yw-record-field > div:focus-within { border-color: #8b78b6; box-shadow: 0 0 0 3px #eae2f7; }
+.yw-record-writing { display: grid; gap: 16px; margin-top: 24px; }
+.yw-record-writing label { min-width: 0; }
+.yw-record-writing textarea { box-sizing: border-box; width: 100%; min-height: 95px; resize: vertical; border: 1px solid #e1dcea; border-radius: 13px; color: inherit; background: white; padding: 12px; font: inherit; font-size: 13px; line-height: 1.8; }
+.yw-record-writing textarea::placeholder { color: #aaa1b3; }
+.yw-record-writing label > small { display: block; text-align: right; font-size: 10px; color: #91869e; margin-top: 4px; }
+.yw-record-hint, .yw-record-footnote { margin: 13px 0; color: #877d93; font-size: 11px; line-height: 1.8; }
+.yw-record-footnote { border-top: 1px solid #e7e0ef; padding-top: 13px; }
+.yw-record-form .journey-primary-button { width: 100%; margin-top: 18px; }
+.yw-record-error { color: #ad4150; background: #fff1f1; border-radius: 10px; font-size: 12px; line-height: 1.7; padding: 11px 13px; }
+.yw-record-saved { color: #4e755e; background: #eef7ef; border-radius: 10px; font-size: 12px; line-height: 1.7; padding: 11px 13px; }
+.yw-record-delete { padding: 10px 0; background: transparent; border: 0; color: #ad5268; font-size: 12px; cursor: pointer; min-height: 42px; }
+.yw-record-confirm { padding: 12px; margin-top: 9px; background: #fff4f3; border: 1px solid #ecd6d7; border-radius: 14px; }
+.yw-record-confirm p { font-size: 12px; line-height: 1.7; margin: 0 0 10px; }
+.yw-record-confirm > div { display: flex; flex-wrap: wrap; gap: 10px; }
+.yw-record-period { display: flex; gap: 8px; margin-bottom: 17px; }
+.yw-record-period button { min-height: 38px; padding: 8px 18px; border: 1px solid #e1d9ee; background: #fff; border-radius: 22px; color: #81748e; cursor: pointer; }
+.yw-record-period button[aria-pressed='true'] { background: var(--journey-accent, #7d72ad); color: #fff; border-color: transparent; }
+.yw-record-summary { padding: 18px; border-radius: 18px; background: var(--journey-surface, #f0edfa); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.yw-record-summary span { font-size: 11px; color: #81768f; display: block; }
+.yw-record-summary strong { display: block; font-size: 32px; line-height: 1.4; color: #655487; }
+.yw-record-summary strong small { font-size: 12px; font-weight: 400; }
+.yw-record-summary > p { max-width: 55%; font-size: 10px; line-height: 1.8; color: #8b7e97; margin: 0; }
+.yw-record-empty { padding: 21px 14px; background: #f6f3f9; border: 1px dashed #e1d9ea; border-radius: 14px; font-size: 12px; color: #84768f; line-height: 1.8; text-align: center; }
+.yw-record-statistics { margin: 17px 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.yw-record-statistics button { display: grid; gap: 6px; text-align: left; border: 1px solid #e8e0ef; border-radius: 14px; background: #fff; padding: 13px; color: inherit; cursor: pointer; }
+.yw-record-statistics button[aria-pressed='true'] { border-color: #9b86b9; box-shadow: inset 0 0 0 1px #9b86b9; background: #f5f0fa; }
+.yw-record-statistics span { font-size: 11px; color: #887b95; }
+.yw-record-statistics b { font-size: 19px; line-height: 1.2; }
+.yw-record-statistics b small { font-size: 10px; font-weight: 400; }
+.yw-record-statistics em { color: #a295ac; font-size: 10px; font-style: normal; }
+.yw-record-chart-card, .yw-record-day-detail, .yw-record-association { padding: 17px; background: #fff; border: 1px solid #e9e1ef; border-radius: 18px; margin-top: 18px; }
+.yw-record-chart-select, .yw-record-association label { display: flex; gap: 10px; justify-content: space-between; align-items: center; font-size: 12px; }
+.yw-record-chart-select select, .yw-record-association select { max-width: 65%; min-height: 40px; }
+.yw-record-chart-meta { display: flex; align-items: center; gap: 8px; justify-content: space-between; margin: 20px 0 13px; font-size: 12px; }
+.yw-record-chart-meta > span { font-size: 10px; color: #9a8da6; }
+.yw-record-chart-scroll { overflow-x: auto; margin: 0 -5px; padding: 4px 5px; overscroll-behavior-x: contain; }
+.yw-record-chart { display: grid; grid-template-columns: repeat(7, minmax(30px, 1fr)); gap: 5px; min-width: 236px; }
+.yw-record-chart.is-month { grid-template-columns: repeat(30, 38px); width: max-content; }
+.yw-record-bar { display: flex; flex-direction: column; align-items: center; padding: 6px 0; min-width: 0; border: 1px solid transparent; border-radius: 9px; background: transparent; cursor: pointer; color: #81738f; }
+.yw-record-bar[aria-pressed='true'] { border-color: #b6a5cf; background: #f4eefb; }
+.yw-record-bar > span { font-size: 9px; white-space: nowrap; font-variant-numeric: tabular-nums; margin-bottom: 7px; }
+.yw-record-bar > i { display: flex; align-items: end; height: 112px; width: 13px; position: relative; border-bottom: 1px solid #e4ddeb; font-style: normal; }
+.yw-record-bar > i > b { display: block; width: 100%; min-height: 3px; height: var(--yw-record-height); background: linear-gradient(#b9a2d6, #8270ad); border-radius: 5px 5px 2px 2px; }
+.yw-record-bar.is-empty > i { border-left: 1px dashed #e5deeb; width: 1px; }
+.yw-record-bar small { font-size: 9px; white-space: nowrap; margin-top: 8px; }
+.yw-record-day-detail h3, .yw-record-association h3 { font-size: 14px; margin: 0 0 16px; }
+.yw-record-detail dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; margin: 0; }
+.yw-record-detail dl > div { min-width: 0; }
+.yw-record-detail dt { font-size: 11px; color: #94869f; margin-bottom: 5px; }
+.yw-record-detail dd { margin: 0; font-size: 14px; color: #68577d; }
+.yw-record-detail dd small { font-size: 10px; }
+.yw-record-detail > p { margin: 15px 0 0; font-size: 12px; line-height: 1.9; color: #796a87; white-space: pre-wrap; overflow-wrap: anywhere; }
+.yw-record-detail > p b { display: block; color: #574166; margin-bottom: 4px; }
+.yw-record-association p { font-size: 12px; line-height: 1.9; color: #7c6c8b; margin: 14px 0; }
+.yw-record-association > small { font-size: 10px; line-height: 1.8; display: block; color: #a092ab; }
+.yw-record-history { margin-top: 27px; padding-top: 22px; border-top: 1px solid #e3dbea; }
+.yw-record-history-item { border: 1px solid #e7dfed; background: #fff; border-radius: 14px; margin: 10px 0; overflow: hidden; }
+.yw-record-history-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; text-align: left; padding: 15px; color: inherit; background: transparent; border: 0; cursor: pointer; }
+.yw-record-history-toggle > span { min-width: 0; }
+.yw-record-history-toggle b { display: block; font-size: 13px; }
+.yw-record-history-toggle small { display: block; margin-top: 7px; font-size: 10px; line-height: 1.7; color: #9b8ca6; }
+.yw-record-history-toggle em { font-size: 11px; font-style: normal; color: #9480ad; white-space: nowrap; }
+.yw-record-history-expanded { border-top: 1px solid #eee7f2; padding: 16px; }
+.yw-record-edit-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+.yw-record-history-expanded .yw-record-intro { padding-top: 17px; border-top: 1px solid #e8e0ef; }
+.yw-record-editor :is(button, input, textarea):focus-visible, .yw-record-report :is(button, select):focus-visible, .yw-record-history button:focus-visible { outline: 2px solid #9980be; outline-offset: 3px; }
+@media (max-width: 350px) {
+  .yw-record-fields { gap: 14px 9px; }
+  .yw-record-chart-card, .yw-record-day-detail, .yw-record-association { padding: 13px; }
+  .yw-record-summary { align-items: start; flex-direction: column; }
+  .yw-record-summary > p { max-width: none; }
+}

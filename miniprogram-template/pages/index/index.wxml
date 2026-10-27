@@ -1,0 +1,7 @@
+<web-view wx:if="{{h5Url && !failed}}" src="{{h5Url}}" binderror="onWebError"></web-view>
+<view wx:else class="fallback">
+  <view class="mark">医</view>
+  <view class="title">页面暂时无法打开</view>
+  <view class="desc">请检查网络后重新进入；如持续失败，请联系运营人员检查业务域名配置。</view>
+  <button class="retry" bindtap="retry">重新加载</button>
+</view>

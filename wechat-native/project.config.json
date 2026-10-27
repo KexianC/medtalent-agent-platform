@@ -1,0 +1,10 @@
+{
+  "appid": "wx7a4c71565eeee4b9",
+  "projectname": "Medtalent-原生智能体",
+  "compileType": "miniprogram",
+  "miniprogramRoot": "./",
+  "libVersion": "3.8.10",
+  "setting": { "urlCheck": true, "es6": true, "enhance": true, "postcss": false, "minified": true, "minifyWXSS": true, "minifyWXML": true, "packNpmManually": false },
+  "packOptions": { "ignore": [{ "type": "file", "value": "README.md" }, { "type": "file", "value": "build-manifest.json" }] },
+  "condition": { "miniprogram": { "list": [{ "name": "唐劲松问答", "pathName": "pages/doctor/index", "query": "slug=tang-jinsong&tab=ask" }] } }
+}

@@ -1,0 +1,8 @@
+# Optional TLS overlay: use with compose.yml and compose.mysql.yml.
+services:
+  platform:
+    environment:
+      MYSQL_SSL_MODE: required
+      MYSQL_SSL_CA_FILE: /run/secrets/mysql-ca.pem
+    volumes:
+      - ${MYSQL_SSL_CA_PATH:?请在 .env.local 中设置阿里云 RDS CA 证书的宿主机绝对路径}:/run/secrets/mysql-ca.pem:ro

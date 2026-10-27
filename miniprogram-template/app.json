@@ -1,0 +1,10 @@
+{
+  "pages": ["pages/index/index"],
+  "window": {
+    "navigationBarTitleText": "有医说医",
+    "navigationBarBackgroundColor": "#173a35",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f3f6f4"
+  },
+  "sitemapLocation": "sitemap.json"
+}

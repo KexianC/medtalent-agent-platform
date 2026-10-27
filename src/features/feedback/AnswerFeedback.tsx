@@ -1,0 +1,8 @@
+import { useState } from 'react';
+import { useDoctorPreview } from '../../hooks/doctorPreview';
+export function AnswerFeedback({doctorSlug,messageId,question,answer}: {doctorSlug:string;messageId:string;question:string;answer:string}) {
+ const preview=useDoctorPreview(),[rating,setRating]=useState(''),[comment,setComment]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[sent,setSent]=useState(false);
+ if(preview||!question)return null;
+ const submit=async()=>{setBusy(true);setNotice('');try{const response=await fetch('/api/answer-feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({doctorSlug,messageId,question,answer,rating,comment})});const body=await response.json();if(!response.ok)throw new Error(typeof body.error==='string'?body.error:'反馈暂未提交，请重试。');setSent(true);setNotice('反馈已收到，将进入后台处理。');}catch(error){setNotice(error instanceof Error?error.message:'反馈暂未完成，请重试。');}finally{setBusy(false);}};
+ return <div className="journey-answer-feedback">{!sent&&<details><summary>反馈这条回复</summary><div className="service-plan-actions">{[['helpful','有帮助'],['incorrect','内容纠错'],['unsafe','安全疑问']].map(([id,label])=><button key={id} type="button" aria-pressed={rating===id} onClick={()=>setRating(id)}>{label}</button>)}</div>{rating&&<><textarea maxLength={2000} rows={2} value={comment} onChange={event=>setComment(event.target.value)} placeholder="可补充具体问题；请勿提交不必要的个人身份信息"/><button type="button" disabled={busy} onClick={()=>void submit()}>{busy?'提交中…':'提交反馈'}</button></>}</details>}{notice&&<p role="status">{notice}</p>}</div>;
+}

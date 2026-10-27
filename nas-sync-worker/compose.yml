@@ -1,0 +1,41 @@
+name: medtalent-nas-minio-sync
+services:
+  nas-minio-sync:
+    build:
+      context: ..
+      dockerfile: nas-sync-worker/Dockerfile
+    image: medtalent-nas-minio-sync:1.0.0
+    init: true
+    restart: unless-stopped
+    # UGOS Pro/Linux：共享宿主网络后，127.0.0.1:9000 稳定指向 NAS 本机 MinIO，
+    # 不依赖 DHCP 分配给 NAS 的局域网地址，也不经公网 FRP 绕回。
+    network_mode: host
+    env_file:
+      - ${NAS_TO_S3_ENV_FILE:-.env.nas-sync}
+    environment:
+      NODE_ENV: production
+      NAS_TO_S3_SOURCE_ROOT: /nas/knowledge
+      NAS_TO_S3_STATE_DIR: /state
+      NAS_TO_S3_HEALTH_HOST: 127.0.0.1
+      NAS_TO_S3_HEALTH_PORT: 8790
+    volumes:
+      - type: bind
+        source: ${NAS_TO_S3_HOST_SOURCE:?请设置 NAS_TO_S3_HOST_SOURCE}
+        target: /nas/knowledge
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: volume
+        source: nas-minio-sync-state
+        target: /state
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
+
+volumes:
+  nas-minio-sync-state:

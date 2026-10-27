@@ -1,0 +1,48 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+dist-wx/
+*.local
+/data/
+/backups/
+coverage/
+/output/
+.tmp/
+.backup-work/
+45c923df6d60ce28b2d5ad38d50a3a9f/
+f75a580ef43f9e189e9f62b54e7a6596/
+.playwright-cli/
+.env
+.env.*
+!.env.example
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Private local artifacts
+/outputs/
+.mysql-migration-test-tmp/
+**/project.private.config.json
+
+# Local deployment credentials and certificates
+*.pem
+*.key
+*.p12
+*.pfx

@@ -1,0 +1,61 @@
+import {MAX_AGENT_SEARCHABLE_CHUNKS,PlatformError,validateSlug,nasSourceScopeIssues,normalizeDocumentBatchReview} from './domain.mjs';
+import {publicTimestamp} from './output-safety.mjs';
+import {classifyKnowledgeError} from './knowledge-errors.mjs';
+const reason=(code,message)=>({code,message});
+const count=value=>Number.isSafeInteger(Number(value))&&Number(value)>=0?Number(value):0;
+const sourceReasons={CONTENT_NOT_PUBLISHED:'关联内容未发布、已更新或已撤回。',SOURCE_CHANGED:'知识来源已移除或归属已变化。',NAS_SOURCE_SCOPE_INVALID:'NAS来源配置不符合安全规则。',NAS_SOURCE_SCOPE_CONFLICT:'NAS来源范围重叠，知识已阻止使用。',NAS_DOCUMENT_SOURCE_INVALID:'知识文件不属于当前NAS映射范围。'};
+export function knowledgePolicyIssue(document,reference=new Date()){
+ const policy=document?.governance;if(!policy)return null;
+ if(typeof policy!=='object'||Array.isArray(policy))return reason('KNOWLEDGE_POLICY_INVALID','知识治理配置无效，请重新核验。');
+ if(policy.conflictStatus==='open')return reason('KNOWLEDGE_CONFLICT_OPEN','知识存在待处理冲突，当前不会用于回答。');
+ const time=reference.getTime();
+ if(policy.validFrom){const start=Date.parse(policy.validFrom);if(!Number.isFinite(start))return reason('KNOWLEDGE_POLICY_INVALID','知识生效时间无效。');if(start>time)return reason('KNOWLEDGE_NOT_YET_EFFECTIVE','知识尚未到生效时间，当前不会用于回答。');}
+ if(policy.validUntil){const end=Date.parse(policy.validUntil);if(!Number.isFinite(end))return reason('KNOWLEDGE_POLICY_INVALID','知识到期时间无效。');if(end<=time)return reason('KNOWLEDGE_EXPIRED','知识已过期，当前不会用于回答。');}
+ return null;
+}
+export const knowledgePolicyAllowsRetrieval=(document,reference=new Date())=>!knowledgePolicyIssue(document,reference);
+export function knowledgeEligibility(document,{actualChunkCount=document?.chunkCount,provenanceIssue=null,ragEnabled=true,reference=new Date(),afterApproval=false,capacityExceeded=false}={}){
+ const reasons=[];const push=value=>{if(value&&!reasons.some(item=>item.code===value.code))reasons.push(value);};
+ if(!ragEnabled)push(reason('AGENT_RAG_DISABLED','该智能体已关闭知识检索。'));
+ if(document?.status==='deleted')push(reason('DOCUMENT_REMOVED','资料已移除，不会用于回答。'));
+ else if(['queued','processing'].includes(document?.status))push(reason('DOCUMENT_NOT_INDEXED','资料尚未完成解析和索引。'));
+ else if(document?.status==='error')push(reason('DOCUMENT_PARSE_FAILED','资料处理失败，须按错误原因修复。'));
+ else if(!['review','ready'].includes(document?.status))push(reason('DOCUMENT_STATUS_INVALID','资料状态无效，请重新核验。'));
+ if(!afterApproval){if(document?.approved!==true)push(reason('AWAITING_REVIEW','资料尚未人工审核生效。'));else if(document?.status!=='ready'&&!reasons.length)push(reason('DOCUMENT_NOT_READY','资料当前不处于可检索状态。'));}
+ const actual=count(actualChunkCount),declared=count(document?.chunkCount);
+ if(!actual)push(reason('DOCUMENT_NOT_INDEXED','资料没有可检索片段，请先完成解析。'));
+ else if(actual!==declared)push(reason('KNOWLEDGE_CHUNK_COUNT_MISMATCH','资料声明的片段数量与实际存储不一致，请重新索引验收。'));
+ if(provenanceIssue)push(reason(Object.hasOwn(sourceReasons,provenanceIssue.code)?provenanceIssue.code:'SOURCE_INVALID',sourceReasons[provenanceIssue.code]||'知识来源当前不可用，请核验映射和授权。'));
+ push(knowledgePolicyIssue(document,reference));
+ if(capacityExceeded)push(reason('INDEX_CAPACITY_EXCEEDED','生效知识超过单医生25000片段上限，请精选资料并重新核验。'));
+ return {retrievable:reasons.length===0,blockedReasons:reasons,actualChunkCount:actual};
+}
+async function retrievalAgent(database,slug){const draft=await database.requireAgent(validateSlug(slug)),published=await database.getAgent(slug,true);return {agent:published||draft,configuration:published?'published':'draft'};}
+export async function inspectKnowledgeDocument(database,knowledge,document,options={}){
+ const actualChunkCount=options.actualChunkCount===undefined?await database.countDocumentChunks(document.id):options.actualChunkCount;
+ const provenanceIssue=await knowledge.documentProvenanceIssue(document,options.nasIssues?{nasIssues:options.nasIssues}:undefined);
+ return knowledgeEligibility(document,{...options,actualChunkCount,provenanceIssue});
+}
+function cachedKnowledge(knowledge,database,sources,contents){const copy=Object.create(knowledge),sourceMap=new Map(sources.map(item=>[item.id,item])),contentMap=new Map(contents.map(item=>[item.id,item]));copy.database=new Proxy(database,{get(target,key){if(key==='getEntity')return (table,id)=>table==='sources'?sourceMap.get(id)||null:table==='content'?contentMap.get(id)||null:target.getEntity(table,id);if(key==='listEntities')return (table,...args)=>table==='sources'?sources:target.listEntities(table,...args);const value=target[key];return typeof value==='function'?value.bind(target):value;}});return copy;}
+function safeRun(run){if(!run)return null;const stats=run.stats||{},summary={};for(const key of ['created','updated','unchanged','deleted','skipped','failed','scanned','attempted','deferred'])if(Number.isSafeInteger(stats[key])&&stats[key]>=0)summary[key]=stats[key];for(const key of ['complete','manifestComplete','truncated'])if(typeof stats[key]==='boolean')summary[key]=stats[key];return {status:['running','success','partial','failed','interrupted'].includes(run.status)?run.status:'unknown',startedAt:publicTimestamp(run.startedAt),finishedAt:publicTimestamp(run.finishedAt),...summary,errorCount:Array.isArray(stats.errors)?stats.errors.length:0};}
+export async function knowledgeDiagnostics(database,knowledge,slug){
+ slug=validateSlug(slug);const {agent,configuration}=await retrievalAgent(database,slug),ragEnabled=agent.config?.ragEnabled!==false;
+ const documents=(await database.listEntities('documents',slug)).filter(doc=>doc.status!=='deleted'),sources=await database.listEntities('sources',slug),contents=await database.listEntities('content',slug),nasIssues=nasSourceScopeIssues(await database.listEntities('sources'));
+ const reader=cachedKnowledge(knowledge,database,sources,contents),currentlyApprovedChunks=await database.countSearchableChunks(slug),capacityExceeded=currentlyApprovedChunks>MAX_AGENT_SEARCHABLE_CHUNKS,availability=[];
+ for(let offset=0;offset<documents.length;offset+=25)availability.push(...await Promise.all(documents.slice(offset,offset+25).map(async document=>{
+  const eligibility=await inspectKnowledgeDocument(database,reader,document,{nasIssues,ragEnabled,capacityExceeded}),error=classifyKnowledgeError(document);
+  return {id:document.id,revision:count(document.revision),status:document.status,approved:document.approved===true,...eligibility,...(error?{errorCode:error.code,errorLabel:error.label,errorSuggestion:error.suggestion,recoveryActions:error.recoveryActions}:{}),authorizationDocumented:Boolean(document.governance?.authorizationReference)};
+ })));
+ const byId=new Map(availability.map(item=>[item.id,item])),searchable=availability.filter(item=>item.retrievable),review=documents.filter(doc=>doc.status==='review'&&doc.approved!==true),errorGroups=new Map();for(const item of availability)if(item.errorCode){const group=errorGroups.get(item.errorCode)||{code:item.errorCode,label:item.errorLabel,count:0,suggestion:item.errorSuggestion,recoveryActions:item.recoveryActions};group.count++;errorGroups.set(item.errorCode,group);}
+ const runs=typeof database.listSyncRuns==='function'?await database.listSyncRuns(Math.max(100,Math.min(1000,sources.length*20))):[],latestRuns=new Map();for(const run of runs)if(!latestRuns.has(run.sourceId))latestRuns.set(run.sourceId,run);
+ const sourceSummary=sources.map(source=>{const own=documents.filter(doc=>doc.source==='nas'&&doc.sourceId===source.id),latestRun=safeRun(latestRuns.get(source.id));return {id:source.id,agentSlug:slug,enabled:source.enabled===true,autoPublish:source.autoPublish===true,documentCount:own.length,searchableDocuments:own.filter(doc=>byId.get(doc.id)?.retrievable).length,errorDocuments:own.filter(doc=>doc.status==='error').length,reviewDocuments:own.filter(doc=>doc.status==='review'&&!doc.approved).length,lastStatus:['never','running','success','partial','failed'].includes(source.lastStatus)?source.lastStatus:'unknown',lastSyncAt:publicTimestamp(source.lastSyncAt),lastRun:latestRun,lastRunCoverage:'recent-window',...(latestRun?{scanned:latestRun.scanned,failed:latestRun.failed,complete:latestRun.complete}:{}),candidateZeroObserved:Boolean(latestRun?.complete&&latestRun.scanned===0),candidateZeroMeaning:'平台该轮映射下没有导入候选；不能据此认定物理NAS目录无资料。'};});
+ const reviewChunks=review.reduce((n,doc)=>n+(byId.get(doc.id)?.actualChunkCount||0),0),agentReasons=[];
+ if(!ragEnabled)agentReasons.push(reason('AGENT_RAG_DISABLED','该智能体已关闭知识检索。'));
+ if(!documents.length)agentReasons.push(reason('NO_DOCUMENTS','平台尚无已导入知识；请核验授权资料与来源映射，不能用示例资料冒充。'));
+ if(!searchable.length&&review.length)agentReasons.push(reason('AWAITING_REVIEW','已有解析资料等待人工核验，未审核前不会参与回答。'));
+ if(!searchable.length&&errorGroups.size)agentReasons.push(reason('DOCUMENTS_FAILED','部分资料处理失败，请按安全错误分类修复。'));
+ if(capacityExceeded)agentReasons.push(reason('INDEX_CAPACITY_EXCEEDED','已审核片段超过单节点容量，当前检索会拒绝服务。'));
+ if(!searchable.length)for(const item of availability)for(const blocked of item.blockedReasons)if(!['AWAITING_REVIEW','DOCUMENT_NOT_INDEXED','DOCUMENT_PARSE_FAILED'].includes(blocked.code)&&!agentReasons.some(r=>r.code===blocked.code))agentReasons.push(blocked);
+ return {agentSlug:slug,ragEnabled,configuration,summary:{documents:documents.length,totalChunks:availability.reduce((n,item)=>n+item.actualChunkCount,0),approvedDocuments:documents.filter(doc=>doc.approved===true).length,searchableDocuments:searchable.length,searchableChunks:searchable.reduce((n,item)=>n+item.actualChunkCount,0),reviewDocuments:review.length,errorDocuments:documents.filter(doc=>doc.status==='error').length,blockedDocuments:availability.length-searchable.length,queuedDocuments:documents.filter(doc=>doc.status==='queued').length,processingDocuments:documents.filter(doc=>doc.status==='processing').length},capacity:{limit:MAX_AGENT_SEARCHABLE_CHUNKS,currentlyApprovedChunks,remaining:Math.max(0,MAX_AGENT_SEARCHABLE_CHUNKS-currentlyApprovedChunks),reviewChunks,allReviewFits:currentlyApprovedChunks+reviewChunks<=MAX_AGENT_SEARCHABLE_CHUNKS},agentReasons,availability,errorGroups:[...errorGroups.values()],sources:sourceSummary,checkedAt:new Date().toISOString()};
+}
+export async function knowledgeApprovalPreflight(database,knowledge,input){const normalized=normalizeDocumentBatchReview({...input,action:'approve'}),{agent}=await retrievalAgent(database,normalized.agentSlug),items=[];let additionalChunks=0;const currentlyApprovedChunks=await database.countSearchableChunks(normalized.agentSlug);for(const target of normalized.documents){let document;try{document=await database.requireEntity('documents',target.id);}catch(error){if(!(error instanceof PlatformError))throw error;items.push({id:target.id,revision:target.revision,eligible:false,blockedReasons:[reason('NOT_FOUND','资料不存在或未获授权。')]});continue;}if(document.agentSlug!==normalized.agentSlug){items.push({id:target.id,revision:target.revision,eligible:false,blockedReasons:[reason('DOCUMENT_AGENT_MISMATCH','资料不属于当前智能体。')]});continue;}if(count(document.revision)!==target.revision){items.push({id:target.id,revision:target.revision,eligible:false,blockedReasons:[reason('DOCUMENT_REVISION_CONFLICT','资料版本已变化，请刷新后重选。')]});continue;}const eligibility=await inspectKnowledgeDocument(database,knowledge,document,{afterApproval:true,ragEnabled:true});if(eligibility.retrievable&&!(document.status==='ready'&&document.approved===true))additionalChunks+=eligibility.actualChunkCount;const runtime=knowledgeEligibility(document,{afterApproval:true,actualChunkCount:eligibility.actualChunkCount,ragEnabled:agent.config?.ragEnabled!==false});items.push({id:target.id,revision:target.revision,eligible:eligibility.retrievable,chunkCount:eligibility.actualChunkCount,blockedReasons:eligibility.blockedReasons,retrievableAfterApproval:eligibility.retrievable&&runtime.retrievable,runtimeBlockedReasons:runtime.blockedReasons});}const projectedApprovedChunks=currentlyApprovedChunks+additionalChunks;return {agentSlug:normalized.agentSlug,requested:items.length,eligible:items.filter(item=>item.eligible).length,blocked:items.filter(item=>!item.eligible).length,capacity:{limit:MAX_AGENT_SEARCHABLE_CHUNKS,currentlyApprovedChunks,additionalChunks,projectedApprovedChunks,remaining:Math.max(0,MAX_AGENT_SEARCHABLE_CHUNKS-currentlyApprovedChunks),fits:projectedApprovedChunks<=MAX_AGENT_SEARCHABLE_CHUNKS},items,readOnly:true};}

@@ -1,0 +1,10 @@
+# Optional: use a prepared host data directory, e.g. a verified restored backup.
+# Include this override on EVERY subsequent Compose command for this deployment.
+services:
+  platform:
+    volumes:
+      - type: bind
+        source: ${PLATFORM_DATA_PATH:?请设置已存在的独立数据目录绝对路径 PLATFORM_DATA_PATH}
+        target: /app/data
+        bind:
+          create_host_path: false

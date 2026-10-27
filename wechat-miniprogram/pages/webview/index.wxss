@@ -1,0 +1,5 @@
+.fallback { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.fallback-logo { width: 112rpx; height: 112rpx; margin-bottom: 36rpx; }
+.description { margin: 24rpx 0 48rpx; text-align: center; }
+.secondary { margin-top: 24rpx; }
+.help { color: #64748b; font-size: 25rpx; padding: 32rpx 0; }

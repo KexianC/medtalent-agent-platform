@@ -1,0 +1,5 @@
+services:
+  platform:
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?请在 .env.local 中设置 MySQL DATABASE_URL}
+      MYSQL_SSL_MODE: ${MYSQL_SSL_MODE:-required}

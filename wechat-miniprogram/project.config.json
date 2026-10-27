@@ -1,0 +1,36 @@
+{
+  "description": "Medtalent智能体平台微信 WebView 入口",
+  "miniprogramRoot": "./",
+  "compileType": "miniprogram",
+  "appid": "wx7a4c71565eeee4b9",
+  "projectname": "Medtalent智能体",
+  "libVersion": "3.8.10",
+  "setting": {
+    "urlCheck": true,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "minifyWXSS": true,
+    "minifyWXML": true,
+    "uploadWithSourceMap": false
+  },
+  "packOptions": {
+    "ignore": [
+      { "type": "file", "value": "README.md" },
+      { "type": "file", "value": "project.private.config.json" },
+      { "type": "folder", "value": "docs" }
+    ],
+    "include": []
+  },
+  "condition": {
+    "miniprogram": {
+      "list": [
+        { "name": "统一入口", "pathName": "pages/index/index", "query": "", "scene": null },
+        { "name": "智能体平台", "pathName": "pages/webview/index", "query": "", "scene": null },
+        { "name": "医生分享入口", "pathName": "pages/webview/index", "query": "path=%2Fd%2Ftang-jinsong", "scene": null },
+        { "name": "隐私说明", "pathName": "pages/policy/index", "query": "type=privacy", "scene": null }
+      ]
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "component": true,
+  "styleIsolation": "apply-shared",
+  "usingComponents": {
+    "native-education": "../education/index",
+    "native-health": "/components/health/index",
+    "native-assessments": "/components/assessments/index",
+    "native-wellness": "/components/wellness/index"
+  }
+}

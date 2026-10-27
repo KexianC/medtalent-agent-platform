@@ -1,0 +1,37 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/doctor/index",
+    "pages/policy/index"
+  ],
+  "window": {
+    "navigationStyle": "custom",
+    "backgroundColor": "#f8f9f6",
+    "backgroundTextStyle": "dark"
+  },
+  "permission": {
+    "scope.record": {
+      "desc": "用于你主动发起语音交流时录制语音并识别问题"
+    }
+  },
+  "__usePrivacyCheck__": true,
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents",
+  "subpackages": [
+    {
+      "name": "knowledge",
+      "root": "subpackages/knowledge",
+      "pages": [
+        "pages/excerpt/index"
+      ]
+    },
+    {
+      "name": "consumer",
+      "root": "subpackages/consumer",
+      "pages": [
+        "pages/services/index",
+        "pages/report/index"
+      ]
+    }
+  ]
+}

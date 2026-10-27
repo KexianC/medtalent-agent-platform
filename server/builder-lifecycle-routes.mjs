@@ -1,0 +1,34 @@
+import {PlatformError,validateSlug} from "./domain.mjs";
+import {credentialValues,safeOutputText} from "./output-safety.mjs";
+import {getAgentFieldDiff,bulkMutateAgents,getBuilderCompatibility,exportConfigurationPackage,inspectConfigurationPackage,importConfigurationPackage,withAgentDraftHash,listBuilderSessions,getBuilderSession,createBuilderSession,appendBuilderSessionMessage,applyBuilderSession,deleteBuilderSession} from "./builder-lifecycle.mjs";
+import {listAgentTemplateVersions,publishAgentTemplate,retireAgentTemplate,upgradeAgentTemplate,previewAgentTemplate,getAgentTemplateBinding,updateAgentTemplateBinding} from "./agent-builder.mjs";
+import {listAgentReleases,stageAgentReleaseRestore,publishAgentRelease} from "./builder-lifecycle-release.mjs";
+const route=handler=>(req,res,next)=>Promise.resolve(handler(req,res,next)).catch(next);
+const actor=req=>req.user?.username||"system";
+export function registerBuilderLifecycleRoutes(app,{database,knowledge,viewer,editor,admin,env={},fetchImpl=fetch,limit,authorizeAgent}){
+ const secrets=credentialValues(env),safe=value=>typeof value==="string"?safeOutputText(value,secrets,100000):Array.isArray(value)?value.map(safe):value&&typeof value==="object"?Object.fromEntries(Object.entries(value).map(([key,item])=>[key,safe(item)])):value;
+ const outputAgent=async agent=>safe(await withAgentDraftHash(database,agent,knowledge));
+ const sessionOptions=req=>({env,fetchImpl,knowledge,admin:req.user?.role==="admin"});
+ const limited=limit?limit("builder-planning",10,60000):(_req,_res,next)=>next();
+ app.get("/api/admin/agents/:slug/diff",viewer,route(async(req,res)=>res.json(safe(await getAgentFieldDiff(database,req.params.slug,req.query.against||"published")))));
+ app.get("/api/admin/agents/:slug/compatibility",viewer,route(async(req,res)=>res.json(safe(getBuilderCompatibility(await database.requireAgent(req.params.slug))))));
+ app.post("/api/admin/agents/bulk",editor,route(async(req,res)=>{const result=await bulkMutateAgents(database,req.body,actor(req),{authorize:authorizeAgent?slug=>authorizeAgent(req,slug):undefined,publish:(slug,who)=>publishAgentRelease(database,slug,who,{knowledge})});res.json(safe({...result,results:result.results.map(item=>item.agent?{...item,agent:knowledge.publicAgent(item.agent)}:item)}))}));
+ app.get("/api/admin/agents/:slug/config-package",viewer,route(async(req,res)=>res.json(safe(exportConfigurationPackage(await database.requireAgent(req.params.slug),env)))));
+ app.post("/api/admin/config-packages/validate",viewer,route(async(req,res)=>{try{const result=inspectConfigurationPackage(req.body?.package);res.json({valid:true,issues:result.issues,compatibility:result.compatibility})}catch(error){if(!(error instanceof PlatformError))throw error;res.json({valid:false,issues:[error.message],code:error.code})}}));
+ app.post("/api/admin/config-packages/import",editor,route(async(req,res)=>res.status(201).json(await outputAgent(await importConfigurationPackage(database,req.body,actor(req),env)))));
+ app.get("/api/admin/templates/:id/versions",viewer,route(async(req,res)=>res.json(safe({versions:await listAgentTemplateVersions(database,req.params.id)}))));
+ app.post("/api/admin/templates/:id/publish",admin,route(async(req,res)=>res.json(safe(await publishAgentTemplate(database,req.params.id,req.body,actor(req))))));
+ app.post("/api/admin/templates/:id/retire",admin,route(async(req,res)=>res.json(safe(await retireAgentTemplate(database,req.params.id,req.body,actor(req))))));
+ app.post("/api/admin/templates/:id/upgrade",editor,route(async(req,res)=>res.json(safe(await upgradeAgentTemplate(database,req.params.id,req.body,actor(req))))));
+ app.post("/api/admin/templates/:id/preview",viewer,route(async(req,res)=>{const result=await previewAgentTemplate(database,req.params.id,req.body,env);res.json(safe({...result,agent:{...knowledge.publicAgent(result.agent),welcomeMessage:result.agent.config.welcomeMessage}}))}));
+ app.get("/api/admin/agents/:slug/template-binding",viewer,route(async(req,res)=>res.json(safe(await getAgentTemplateBinding(database,req.params.slug)))));
+ app.put("/api/admin/agents/:slug/template-binding",editor,route(async(req,res)=>{const result=await updateAgentTemplateBinding(database,req.params.slug,req.body,actor(req));res.json(safe({...result,agent:knowledge.publicAgent(result.agent)}))}));
+ app.get("/api/admin/builder/sessions",viewer,route(async(req,res)=>res.json(safe({sessions:await listBuilderSessions(database,actor(req),sessionOptions(req))}))));
+ app.post("/api/admin/builder/sessions",editor,limited,route(async(req,res)=>{if(req.body?.agentSlug&&authorizeAgent)await authorizeAgent(req,validateSlug(req.body.agentSlug));res.status(201).json(safe({session:await createBuilderSession(database,req.body,actor(req),sessionOptions(req))}))}));
+ app.get("/api/admin/builder/sessions/:id",viewer,route(async(req,res)=>res.json(safe({session:await getBuilderSession(database,req.params.id,actor(req),sessionOptions(req))}))));
+ app.post("/api/admin/builder/sessions/:id/messages",editor,limited,route(async(req,res)=>res.json(safe({session:await appendBuilderSessionMessage(database,req.params.id,req.body,actor(req),sessionOptions(req))}))));
+ app.post("/api/admin/builder/sessions/:id/apply",editor,route(async(req,res)=>res.json(await outputAgent(await applyBuilderSession(database,req.params.id,req.body,actor(req),sessionOptions(req))))));
+ app.delete("/api/admin/builder/sessions/:id",editor,route(async(req,res)=>res.json(await deleteBuilderSession(database,req.params.id,actor(req),sessionOptions(req)))));
+ app.get("/api/admin/agents/:slug/releases",viewer,route(async(req,res)=>res.json(safe({releases:await listAgentReleases(database,req.params.slug)}))));
+ app.post("/api/admin/agents/:slug/releases/:releaseId/restore",editor,route(async(req,res)=>res.json(await outputAgent(await stageAgentReleaseRestore(database,req.params.slug,req.params.releaseId,req.body,actor(req))))));
+}

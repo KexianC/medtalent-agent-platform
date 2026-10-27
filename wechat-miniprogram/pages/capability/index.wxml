@@ -1,0 +1,7 @@
+<view class="page capability">
+  <image class="logo" src="/assets/medtalent-logo.png" mode="aspectFit" />
+  <view class="title">{{title}}</view>
+  <view class="muted description">{{description}}</view>
+  <button wx:if="{{enabled}}" class="primary confirm" loading="{{pending}}" disabled="{{pending}}" bindtap="confirm">{{pending ? '正在登录' : '微信一键登录'}}</button>
+  <button class="secondary" bindtap="goBack">{{pending ? '取消并返回' : '返回应用'}}</button>
+</view>

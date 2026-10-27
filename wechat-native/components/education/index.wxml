@@ -1,0 +1,57 @@
+<view wx:if="{{doctor}}" class="{{layoutClass}} education-shell {{mode === 'services' ? 'journey-simple-panel journey-services-panel' : 'journey-published-shell'}} {{isTang ? 'is-tang' : ''}}">
+  <block wx:if="{{mode === 'services'}}">
+    <view wx:if="{{!compact}}" class="panel-header"><text class="journey-eyebrow">PROFESSIONAL SERVICES</text><text class="panel-title">专业健康服务</text><text class="panel-description">根据当前智能体的服务配置提供健康科普与信息整理。</text></view>
+    <button wx:if="{{!compact}}" class="journey-primary-button manage-button" hover-class="primary-pressed" hover-start-time="0" hover-stay-time="0" bindtap="manage"><image src="{{icons.clipboard}}"/>填写记录与查看统计</button>
+    <text wx:if="{{compact}}" class="published-heading">我的服务清单</text>
+    <view wx:if="{{planStorageNotice}}" class="service-plan-warning" role="status"><text>{{planStorageNotice}}</text><button class="service-plan-secondary" bindtap="retryPlanStorage" disabled="{{planRetrying}}">{{planRetrying ? '正在重试…' : '重试保存与同步'}}</button></view>
+    <view class="journey-service-grid"><button wx:for="{{services}}" wx:key="title" data-index="{{item.index}}" bindtap="openService"><view class="service-symbol"><image src="{{item.iconUrl}}"/></view><text class="service-title">{{item.title}}</text><text class="service-copy">{{item.progress}}</text><image class="service-arrow" src="{{icons.chevron}}"/></button></view>
+    <view wx:if="{{savedPlans.length}}" class="service-plan-actions"><button wx:for="{{savedPlans}}" wx:key="id" class="service-plan-secondary" data-id="{{item.id}}" bindtap="openService">查看已保存计划：{{item.service}}</button></view>
+  </block>
+  <view wx:if="{{content.length}}" class="journey-published-content">
+    <view class="published-header"><text class="journey-eyebrow">PUBLISHED CONTENT</text><text class="published-heading">{{title || (mode === 'services' ? '已发布服务' : '最新发布')}}</text></view>
+    <view class="journey-published-list"><button wx:for="{{content}}" wx:key="id" data-id="{{item.id}}" bindtap="openContent"><text class="journey-content-type">{{item.typeLabel}}</text><view class="published-copy"><text class="published-title">{{item.title}}</text><text wx:if="{{item.summary}}" class="published-summary">{{item.summary}}</text></view><image src="{{icons.publishedArrow}}"/></button></view>
+  </view>
+  <view class="journey-boundary" wx:if="{{mode === 'services'}}"><image src="{{icons.boundaryShield}}"/><view><text class="boundary-title">{{exp.tagline}}</text><text class="boundary-copy">线上内容用于健康教育和就医准备，不提供诊断、处方或急救服务。</text></view></view>
+</view>
+<view wx:if="{{selected || selectedService}}" class="native-sheet-backdrop {{backdropMotion}}" bindtap="closeSheet">
+  <view class="native-sheet {{sheetMotion}} {{isTang ? 'is-tang' : ''}}" catchtap="preventClose">
+    <scroll-view enhanced show-scrollbar="{{false}}" class="sheet-scroll" style="height:{{sheetHeight + 41}}px" scroll-y>
+      <view class="sheet-scroll-padding">
+        <view class="sheet-handle"/>
+        <button class="sheet-close" bindtap="closeSheet" aria-label="关闭详情"><image src="{{icons.close}}"/></button>
+      <view class="sheet-content">
+        <block wx:if="{{selected}}">
+          <text class="journey-eyebrow">{{selected.typeLabel}}</text>
+          <text class="sheet-title">{{selected.title}}</text>
+          <view class="sheet-feature-body">
+            <text wx:if="{{selected.displaySummary}}" class="journey-feature-lead">{{selected.displaySummary}}</text>
+            <text class="journey-published-body" user-select>{{selected.displayBody}}</text>
+            <button class="journey-primary-button published-continue" hover-class="primary-pressed" hover-start-time="0" hover-stay-time="0" bindtap="continueContent"><image src="{{icons.chat}}"/>继续了解相关问题</button>
+            <view class="journey-sheet-disclaimer"><image src="{{icons.shield}}"/><text>内容仅用于健康科普与就医准备，不替代专业诊疗。</text></view>
+          </view>
+        </block>
+        <block wx:else>
+          <text class="journey-eyebrow">PROFESSIONAL SERVICE</text>
+          <text class="sheet-title">{{selectedService.title}}</text><text wx:if="{{planReadOnly}}" class="plan-step-description">此组件为只读，可查看和删除已有记录。</text><text wx:if="{{planProgress}}" class="plan-step-description">{{planProgress.completed ? '准备事项已完成' : '准备事项进行中'}} · {{planProgress.count}} / {{planProgress.total}}</text>
+          <view class="sheet-feature-body">
+            <text class="journey-feature-lead">{{selectedService.description}}</text>
+            <view class="journey-feature-checklist"><view wx:for="{{selectedService.items}}" wx:key="*this"><image src="{{icons.check}}"/><text>{{item}}</text></view></view>
+            <view wx:if="{{plan}}" class="service-plan-editor">
+              <text class="published-heading">我的服务清单</text><text class="service-plan-help">勾选已整理的事项，记录自己的问题。计划日期仅用于本页回顾。</text>
+              <view wx:for="{{planSteps}}" wx:for-item="step" wx:key="text"><button class="service-plan-step {{step.checked ? 'is-checked' : ''}}" data-step="{{step.text}}" bindtap="togglePlanStep" role="checkbox" aria-checked="{{step.checked}}" disabled="{{!planCanEdit || step.blocked}}"><text class="service-plan-check">{{step.checked ? '✓' : '○'}}</text><view><text>{{step.label}}{{step.required === false ? '（选填）' : step.required === true ? '（必需）' : ''}}</text><text wx:if="{{step.description}}" class="plan-step-description">{{step.description}}</text><text wx:if="{{step.blocked}}" class="plan-step-description">请先完成前置步骤</text></view></button><label wx:for="{{step.fields}}" wx:key="key" class="plan-field"><text>{{item.label}}{{item.required ? ' *' : ''}}</text><input type="{{item.type === 'number' ? 'digit' : 'text'}}" value="{{item.value}}" data-step="{{step.id}}" data-key="{{item.key}}" bindinput="editPlanField" maxlength="1000" disabled="{{!planCanEdit || step.blocked}}"/></label></view>
+              <view class="service-plan-field"><text>计划日期（选填）</text><picker mode="date" start="1900-01-01" end="2200-12-31" value="{{plan.targetDate}}" data-key="targetDate" bindchange="editPlan" disabled="{{!planCanEdit}}"><view class="service-plan-date">{{plan.targetDate || '选择日期'}}</view></picker><button wx:if="{{plan.targetDate}}" class="service-plan-secondary" bindtap="clearPlanDate" disabled="{{!planCanEdit}}">清除日期</button></view>
+              <label class="service-plan-field"><text>我的记录与待问问题</text><textarea value="{{plan.note}}" data-key="note" bindinput="editPlan" maxlength="2000" disabled="{{!planCanEdit}}" placeholder="写下实际情况或准备向医生确认的问题"/><text class="service-plan-help">{{plan.note.length}} / 2000</text></label>
+              <text wx:if="{{planError}}" class="service-plan-error" role="alert">{{planError}}</text><text wx:if="{{planNotice}}" class="service-plan-help" role="status">{{planNotice}}</text>
+              <view wx:if="{{planConflict}}" class="service-plan-warning" role="alert"><text>这份已保存的清单在你填写期间发生了变化，当前草稿尚未覆盖新版本。请选择载入已保存版本，或确认保留当前草稿后再次保存。</text><view class="service-plan-actions"><button class="service-plan-secondary" bindtap="reloadSavedPlan">载入已保存版本</button><button class="service-plan-secondary" bindtap="confirmCurrentPlanDraft" disabled="{{!planCanEdit}}">确认使用当前草稿</button></view></view>
+              <view class="service-plan-actions"><button class="journey-primary-button" bindtap="savePlan" disabled="{{!planCanEdit}}">{{planSaved ? '保存清单修改' : '保存服务清单'}}</button><button class="service-plan-secondary" bindtap="previewPlan">预览咨询摘要</button><button wx:if="{{planSaved}}" class="service-plan-delete" bindtap="deletePlan" disabled="{{!planCanDelete}}">删除已存清单</button></view>
+              <view wx:if="{{planPreview}}" class="service-plan-preview"><text class="published-heading">咨询摘要预览</text><text selectable>{{planPreview}}</text><text class="service-plan-help">仅将以上内容放入问答草稿，进入后可继续修改并自行发送。</text><button class="journey-primary-button" bindtap="consultPlan">带摘要进入问答草稿</button></view>
+            </view>
+            <button class="journey-primary-button" hover-class="primary-pressed" hover-start-time="0" hover-stay-time="0" bindtap="continueService"><image src="{{selectedService.manage ? icons.clipboard : icons.chatFill}}"/>{{selectedService.manage ? '填写记录与查看统计' : '进入智能问答'}}</button>
+            <view class="journey-sheet-disclaimer"><image src="{{icons.shield}}"/><text>本服务仅提供科普和建议，回答仅供参考。</text></view>
+          </view>
+        </block>
+      </view>
+      </view>
+    </scroll-view>
+  </view>
+</view>

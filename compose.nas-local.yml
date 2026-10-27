@@ -1,0 +1,11 @@
+# 可选：NAS_MOUNT_PATH 是宿主机已挂载的 NAS 共享目录，不是 smb:// URL。
+# docker compose --env-file .env.local -f compose.yml -f compose.nas-local.yml up -d --build
+services:
+  platform:
+    environment:
+      NAS_LOCAL_ROOT: /mnt/nas
+    volumes:
+      - type: bind
+        source: ${NAS_MOUNT_PATH:?请设置已挂载且只读的 NAS_MOUNT_PATH}
+        target: /mnt/nas
+        read_only: true

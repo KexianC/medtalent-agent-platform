@@ -1,0 +1,6 @@
+.summary { margin: 32rpx 0; }
+.section-title { font-size: 32rpx; font-weight: 600; margin-bottom: 24rpx; }
+.question { font-weight: 600; margin: 28rpx 0 10rpx; }
+.contact { margin-top: 24rpx; word-break: break-all; }
+.version { text-align: center; font-size: 24rpx; margin-top: 24rpx; }
+.privacy-button { color: #516783; background: transparent; font-size: 25rpx; }

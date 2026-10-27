@@ -1,0 +1,19 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/webview/index",
+    "pages/about/index",
+    "pages/policy/index",
+    "pages/capability/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "Medtalent智能体",
+    "navigationBarBackgroundColor": "#f7f9fc",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f7f9fc",
+    "backgroundTextStyle": "dark"
+  },
+  "style": "v2",
+  "lazyCodeLoading": "requiredComponents",
+  "sitemapLocation": "sitemap.json"
+}

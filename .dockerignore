@@ -1,0 +1,21 @@
+/node_modules
+/dist
+/dist-wx
+/data
+/backups
+/output
+/coverage
+/.git
+/.env
+/.env.*
+*.log
+/tests
+
+# Private local artifacts and nested environment files
+/outputs
+/.tmp
+/.mysql-migration-test-tmp
+/.playwright-cli
+**/.env
+**/.env.*
+**/project.private.config.json

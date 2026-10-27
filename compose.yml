@@ -1,0 +1,31 @@
+name: medtalent-agent-platform
+services:
+  platform:
+    build: .
+    image: medtalent-agent-platform:1.0.0
+    init: true
+    restart: unless-stopped
+    env_file: .env.local
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 8788
+      DATA_DIR: /app/data
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?请在 .env.local 中设置独立的 ADMIN_PASSWORD}
+      PUBLIC_URL: ${PUBLIC_URL:?请在 .env.local 中设置平台 HTTPS PUBLIC_URL}
+    ports:
+      - "127.0.0.1:${PLATFORM_PORT:-8788}:8788"
+    volumes:
+      - platform-data:/app/data
+      - platform-backups:/app/backups
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 90s
+volumes:
+  platform-data:
+  platform-backups:

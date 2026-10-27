@@ -1,0 +1,2 @@
+const config = require('../../config');
+Page({data:{title:'隐私说明',config,statusBar:20},onLoad(query){const info=wx.getWindowInfo?wx.getWindowInfo():wx.getSystemInfoSync();this.setData({title:query.type==='terms'?'使用须知':'隐私说明',statusBar:info.statusBarHeight||20});},back(){wx.navigateBack({fail:()=>wx.reLaunch({url:'/pages/index/index'})});},openGuide(){if(wx.openPrivacyContract)wx.openPrivacyContract({fail:()=>wx.showToast({title:'请在微信小程序设置中查看隐私指引',icon:'none'})});}});

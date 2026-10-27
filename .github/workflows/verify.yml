@@ -1,0 +1,43 @@
+name: Deployment verification
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+      - run: npm run build:native
+      - run: npm run test:native
+      - run: node --test server/runtime-config.test.mjs server/platform-access-http.test.mjs
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create isolated test configuration
+        shell: bash
+        run: |
+          umask 077
+          printf 'ADMIN_PASSWORD=%s\nPUBLIC_URL=https://smoke.example.com\n' "$(openssl rand -hex 24)" > .env.local
+      - name: Build and start container
+        run: docker compose --env-file .env.local up -d --build --wait --wait-timeout 180
+      - name: Verify API and frontend
+        run: |
+          curl --fail --retry 3 http://127.0.0.1:8788/api/health
+          curl --fail http://127.0.0.1:8788/ -o /dev/null
+      - name: Container diagnostics
+        if: failure()
+        run: docker compose --env-file .env.local logs --tail=100
+      - name: Remove isolated test resources
+        if: always()
+        run: docker compose --env-file .env.local down --volumes

@@ -1,0 +1,37 @@
+<view class="page policy">
+  <view class="title">{{type === 'privacy' ? '隐私说明' : '使用须知'}}</view>
+  <view class="updated muted">更新日期：{{updatedAt}}</view>
+  <block wx:if="{{type === 'privacy'}}">
+    <view class="section-title">适用范围</view>
+    <view class="paragraph">本说明适用于{{appName}}小程序及其中打开的智能体网页。<text wx:if="{{operatorName}}">本应用由{{operatorName}}运营。</text>你可以先阅读本说明再选择使用功能；浏览入口不需要授权手机号、位置、通讯录或麦克风。</view>
+    <view class="section-title">问答与外部处理</view>
+    <view class="paragraph">当你发送问题时，问题、当前会话所需上下文及你主动选择提供的健康记录会发送到应用服务器，并由运营方配置的模型服务处理，以生成回答。请避免提供身份证号、联系方式等不必要的个人信息。模型与语音服务的具体提供方及其处理规则，请查看对应功能的说明或联系运营方了解。</view>
+    <view class="section-title">语音</view>
+    <view class="paragraph">仅在你主动使用语音功能并允许麦克风访问后采集录音。录音会发送到应用服务器及配置的语音服务用于识别；语音播放会将待播报文字发送给语音服务。普通语音输入的转写结果可编辑后手动发送；连续语音对话模式会按页面说明将识别结果用于问答。你可以拒绝麦克风访问并使用文字功能。</view>
+    <view class="section-title">微信登录与记录同步</view>
+    <view class="paragraph">你主动点击微信登录时，小程序会取得微信提供的临时登录凭证并发送至应用服务器，用于识别账号；不需要授权手机号、头像或昵称。登录后，聊天、健康记录、问卷结果、收藏及偏好按页面设置同步至数据库，你使用同一微信账号登录其他设备后可查看已同步的数据。未登录时，本机记录保存在当前设备的网页存储中。</view>
+    <view class="section-title">服务日志</view>
+    <view class="paragraph">应用服务端记录服务请求的统计元数据。为提供网络服务和排查故障，网络基础设施可能处理 IP 地址、访问时间、请求路径等日志。请勿把问题或健康信息放入分享链接。</view>
+    <view class="section-title">你的选择</view>
+    <view class="paragraph">你可以在智能体的“我的”与“隐私与设置”中管理记录、退出登录、关闭聊天保存，或在微信/系统设置中撤回麦克风权限。停止保存对话不会撤回已发出的模型请求；清除小程序或网页缓存不会自动删除账号数据库中的记录。未同步的本机记录更换设备后无法恢复。如需协助删除账号数据，可联系运营方。</view>
+    <view class="section-title">未成年人</view>
+    <view class="paragraph">未成年人请在监护人指导下使用；涉及儿童的健康信息请由监护人了解处理方式后提供。请勿通过本应用处理急救事项或自行作出医疗决定。</view>
+    <view class="section-title">联系与更新</view>
+    <view class="paragraph">如需了解数据处理、申请协助删除或提出意见，请联系运营方。<text wx:if="{{privacyEmail}}" selectable>联系邮箱：{{privacyEmail}}。</text>服务范围或数据处理方式发生变化时，将更新本说明。微信平台隐私保护指引可在“关于与帮助”中查看。</view>
+  </block>
+  <block wx:else>
+    <view class="section-title">服务内容</view>
+    <view class="paragraph">应用提供健康知识浏览、人工智能问答与个人健康记录工具。智能体回答由人工智能生成，可能存在错误或遗漏，不能代替医疗专业人员的判断。</view>
+    <view class="section-title">医疗边界</view>
+    <view class="paragraph">本应用不提供诊断、处方、药物剂量调整、急救响应或医生在线接诊。医生资料与知识内容用于科普展示，不代表医生本人正在回复。需要诊疗时请到正规医疗机构就诊。</view>
+    <view class="section-title">自主提供信息</view>
+    <view class="paragraph">请仅提供实现当前功能所需的信息，并确保有权提供这些信息。健康记录是否用于问答由你自主选择。语音、文字输入和回答应以页面当前功能提示为准。</view>
+    <view class="section-title">合理使用</view>
+    <view class="paragraph">请勿利用本应用传播违法信息、侵犯他人权益、冒用他人身份或干扰服务。引用、转载专业内容时，请尊重相关权利与来源。</view>
+    <view class="section-title">服务可用性</view>
+    <view class="paragraph">网络、微信版本、设备权限与第三方服务可能影响功能可用性。本机记录并非医疗机构病历或长期备份，重要信息请自行妥善保存。</view>
+    <view class="section-title">反馈</view>
+    <view class="paragraph">发现内容错误、资料权益问题或功能异常，可通过“关于与帮助”中的联系方式反馈。<text wx:if="{{privacyEmail}}" selectable>联系邮箱：{{privacyEmail}}。</text></view>
+  </block>
+  <navigator class="back-link" url="/pages/about/index">关于与帮助 →</navigator>
+</view>
