@@ -11,7 +11,7 @@ ENV NODE_ENV=production HOST=0.0.0.0 PORT=8788 DATA_DIR=/app/data
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/package.json ./package.json
 COPY --from=build --chown=node:node /app/server ./server
-COPY --from=build --chown=node:node /app/src/data/doctorProfiles.ts ./src/data/doctorProfiles.ts
+COPY --from=build --chown=node:node /app/src ./src
 COPY --from=build --chown=node:node /app/scripts ./scripts
 COPY --from=build --chown=node:node /app/dist ./dist
 RUN mkdir -p /app/data /app/backups && chown -R node:node /app/data /app/backups
