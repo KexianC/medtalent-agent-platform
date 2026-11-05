@@ -39,9 +39,8 @@ export const doctorCustoms: Record<string, DoctorCustom> = {
     off: ["复诊开方"],
     // 只放医生本人账号或公司数字人的真实视频链接，没有就留空，页面不显示。
     // 本地 mp4 只用于本机演示，文件不进补丁；上线换成正式播放地址。
-    videos: [{ title: "什么是精神分裂症", url: "/assets/doctors/videos/tang-01-schizophrenia.mp4", platform: "邵逸夫医院 唐劲松", keywords: ["精神分裂症"] }],
+    videos: [{ title: "什么是精神分裂症", url: "", platform: "邵逸夫医院 唐劲松", keywords: ["精神分裂症"] }],
     videoPlaceholders: ["失眠时可以先做什么", "怎样陪伴情绪低落的家人"],
-    introPhoto: "/assets/doctors/portraits/tang-jinsong-intro.jpeg",
     // 文字转录自本人 11-02 提供的医生简介图和挂号页截图，未经医生核对，上线前必须核对。
     bio: {
       department: "精神卫生科",
@@ -70,9 +69,9 @@ export const doctorCustoms: Record<string, DoctorCustom> = {
         { campus: "绍兴院区", department: "精神卫生科（名医）(绍兴)" },
       ],
       clinics: [
-        { campus: "钱塘院区", times: ["专家门诊 周二上午", "名医门诊 周二下午"], image: "/assets/doctors/campuses/srrsh-qiantang.jpg" },
-        { campus: "绍兴院区", times: ["名医门诊 周一、周四上午"], image: "/assets/doctors/campuses/srrsh-shaoxing.jpg" },
-        { campus: "庆春院区", times: [], image: "/assets/doctors/campuses/srrsh-qingchun.jpg" },
+        { campus: "钱塘院区", times: ["专家门诊 周二上午", "名医门诊 周二下午"] },
+        { campus: "绍兴院区", times: ["名医门诊 周一、周四上午"] },
+        { campus: "庆春院区", times: [] },
       ],
     },
     expertSections: [{ title: "团队简介", body: pending }, { title: "获奖荣誉", body: pending }],

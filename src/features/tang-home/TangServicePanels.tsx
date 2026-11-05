@@ -36,6 +36,7 @@ export function SourceNote({ keys }: { keys: SourceKey[] }) {
 export function DoctorVideoItem({ video, iconSize, linkSuffix = "" }: { video: DoctorVideo; iconSize: number; linkSuffix?: string }) {
   const [open, setOpen] = useState(false);
   const [failed, setFailed] = useState(false);
+  if (!video.url) return <div className="tang-media-placeholder"><PlayCircleIcon size={iconSize} aria-hidden="true" /><span><b>{video.title}</b><small>{video.platform} · 视频待上传</small></span></div>;
   if (!/\.mp4(\?|$)/i.test(video.url)) return <a href={video.url} target="_blank" rel="noreferrer"><PlayCircleIcon size={iconSize} weight={iconSize > 24 ? "fill" : "regular"} aria-hidden="true" /><span><b>{video.title}</b><small>{video.platform}{linkSuffix}</small></span></a>;
   return <>
     <button type="button" className="tang-video-toggle" aria-expanded={open} onClick={() => setOpen(value => !value)}><PlayCircleIcon size={iconSize} weight={iconSize > 24 ? "fill" : "regular"} aria-hidden="true" /><span><b>{video.title}</b><small>{video.platform} · {open ? "收起视频" : "点击播放"}</small></span></button>
@@ -118,7 +119,6 @@ export function TangRelaxPanel() {
   const [days, setDays] = useTangLocal<string[]>(RELAX_SECTION, []);
   const [checkInFeedback, setCheckInFeedback] = useState(0);
   const [mode, setMode] = useState<"breath" | "muscle">("breath");
-  const [videoFailed, setVideoFailed] = useState(false);
   const [minutes, setMinutes] = useState(1);
   const [left, setLeft] = useState(0);
   const timer = useRef<number>();
@@ -148,9 +148,7 @@ export function TangRelaxPanel() {
       <section className="tang-svc-box"><h3>肌肉放松 · 简短体验</h3><p>轻轻绷紧约 5 秒，再松开约 10 秒，感受前后的不同。全程自然呼吸，不要憋气。疼痛或不适时立即停止；有伤患时先不要练习。</p>
         <ol>{MUSCLE_STEPS.map(step => <li key={step}>{step}</li>)}</ol>
         <section className="tang-svc-video"><h3>跟着视频练习</h3>
-          <video className="tang-svc-video-player" controls preload="none" playsInline aria-label="肌肉放松技术视频" src="https://bjad.com.cn/Sites/Uploaded/Video/2022/11/106380366577518019331197782.mp4" onError={() => setVideoFailed(true)} />
-          {videoFailed && <p className="tang-svc-note" role="status">视频暂时打不开，可到原页面观看</p>}
-          <p className="tang-svc-note">视频来源：北京安定医院《肌肉放松技术》，约 5 分半 · <a href="https://bjad.com.cn/Html/News/Articles/1975.html" target="_blank" rel="noreferrer">查看原页面</a></p>
+          <p className="tang-media-placeholder">视频待提供，先按上面的文字步骤练习。</p>
         </section>
         <div className="tang-svc-actions"><button type="button" className="tang-svc-btn is-primary" disabled={days.includes(today)} onClick={checkIn}>{days.includes(today) ? "今天已打卡" : "完成并打卡"}</button></div>
         <SourceNote keys={["pmr"]} />
@@ -229,7 +227,7 @@ export function TangClinicPanel({ bio, onPrepare }: { bio: DoctorBio; onPrepare:
       const times = clinics.flatMap(item => item.times);
       const departments = bio.bookingDepartments.filter(item => item.campus === campus);
       return <section className="tang-svc-box tang-clinic-card" key={campus} aria-label={campus}>
-        <header className="tang-clinic-cover">{image ? <><img src={image} alt={campus} /><h3>{campus}</h3></> : <h3><MapPinIcon size={24} aria-hidden="true" />{campus}</h3>}</header>
+        <header className="tang-clinic-cover">{image ? <><img src={image} alt={campus} /><h3>{campus}</h3></> : <><h3><MapPinIcon size={24} aria-hidden="true" />{campus}</h3><small className="tang-clinic-placeholder">院区图待提供</small></>}</header>
         <div className="tang-clinic-body"><h4>门诊时间</h4><div className="tang-svc-clinic">{times.length ? <ClinicTimes times={times} /> : <p className="tang-svc-note">门诊时间待确认</p>}</div>
         {departments.length > 0 && <><h4>挂号科室</h4><ul>{departments.map(item => <li key={item.department}>{item.department}</li>)}</ul></>}</div>
       </section>;

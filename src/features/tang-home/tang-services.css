@@ -119,3 +119,8 @@
 }
 
 .is-tang-agent .tang-svc-box > p + p { margin-top: 10px; }
+
+/* Placeholders keep the layout until licensed media is configured. */
+.tang-media-placeholder { display: flex; align-items: center; gap: 10px; margin: 8px 0 0; padding: 14px; border: 1px dashed currentColor; border-radius: 12px; opacity: .72; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.tang-media-placeholder span { display: grid; gap: 2px; min-width: 0; }
+.tang-clinic-placeholder { display: block; padding: 0 14px 10px; opacity: .72; }

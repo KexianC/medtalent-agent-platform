@@ -666,7 +666,7 @@ function HomePanel({
       {isTang && <>
         {tangBio ? <TangDoctorCard bio={tangBio} onTopic={topic => onAsk(`我想了解${topic}`)} onAll={() => onExpert?.()} /> : <section className="tang-home-intro" aria-label="医生介绍">{doctorCustoms[doctor.slug]?.introPhoto && <img src={doctorCustoms[doctor.slug].introPhoto} alt={`${doctor.name}医生`} />}<h2>{doctor.name}医生介绍</h2><p>{doctor.title}</p><h3>专业擅长</h3><p>{doctor.specialty}</p>{doctorCustoms[doctor.slug]?.expertSections.map(section => <div key={section.title}><h3>{section.title}</h3><p>{section.body}</p></div>)}<small>信息仅用于健康科普与就医准备，不替代医生诊断。</small></section>}
         <section className="tang-home-videos" aria-label="科普视频"><h2>科普视频</h2>
-          {(doctorCustoms[doctor.slug]?.videos || []).length ? doctorCustoms[doctor.slug].videos.map(video => <DoctorVideoItem key={video.url} video={video} iconSize={34} linkSuffix=" · 打开视频" />) : <TangVideoPlaceholders titles={doctorCustoms[doctor.slug]?.videoPlaceholders || []} />}
+          {(doctorCustoms[doctor.slug]?.videos || []).length ? doctorCustoms[doctor.slug].videos.map(video => <DoctorVideoItem key={video.title} video={video} iconSize={34} linkSuffix=" · 打开视频" />) : <TangVideoPlaceholders titles={doctorCustoms[doctor.slug]?.videoPlaceholders || []} />}
         </section>
         <section className="tang-home-science" aria-label="健康科普"><h2>科普文章</h2>
           {doctor.articles.map(article => <button key={article.id} type="button" onClick={() => onAsk(article.title)}><b>{article.title}</b><small>{article.summary}</small></button>)}

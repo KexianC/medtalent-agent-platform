@@ -94,3 +94,9 @@ test('local mp4 videos play in the page while external videos stay links', () =>
   assert.match(html, /aria-expanded="false"[^>]*>.*本地视频.*点击播放/);
   assert.doesNotMatch(html, /<video|href="\/assets/);
 });
+
+test('videos without a url show a placeholder instead of a player or empty link', () => {
+  const html = render(TangEducationPanel, { videos: [{ title: '待上传视频', url: '', platform: '医院', keywords: [] }] });
+  assert.match(html, /待上传视频.*视频待上传/);
+  assert.doesNotMatch(html, /<video|href=""/);
+});
