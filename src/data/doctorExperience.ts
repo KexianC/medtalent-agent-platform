@@ -77,10 +77,10 @@ export const doctorExperiences: Record<string, DoctorExperience> = {
     tagline: "畅快呼吸 · 清晰聆听",
     eyebrow: "ENT CARE JOURNEY",
     heroIcon: "ear",
-    primaryTitle: "耳鼻喉症状评估",
+    primaryTitle: "耳鼻喉症状记录",
     primarySubtitle: "把部位、持续时间与影响记录清楚，让就诊沟通更高效。",
-    cta: "开始症状评估",
-    metric: { label: "近 7 天症状天数", value: "3 天", note: "连续记录有助于发现诱因与变化", progress: 43 },
+    cta: "开始记录",
+    metric: { label: "开始记录后显示", value: "0", note: "开始记录后显示", progress: 0 },
     steps: [
       { icon: "ear", title: "症状部位", description: "区分耳、鼻、咽喉不适" },
       { icon: "calendar", title: "时间与诱因", description: "记录出现时段和环境线索" },
@@ -91,7 +91,7 @@ export const doctorExperiences: Record<string, DoctorExperience> = {
       { icon: "ear", title: "突然耳鸣或听力下降，何时就医？", description: "识别不宜等待的听力变化信号" },
     ],
     reminder: "过敏季已开启，可提前整理近期鼻塞、喷嚏与用药记录。",
-    theme: { accent: "#4E879C", accentStrong: "#2D667D", accentRgb: "78, 135, 156", surface: "#EAF3F6", canvas: "#F5F1EA", ink: "#173A46" },
+    theme: { accent: "#3B9A70", accentStrong: "#246D50", accentRgb: "59, 154, 112", surface: "#E8F5EE", canvas: "#F3F7F2", ink: "#214437" },
   },
   "gong-wenbo": {
     tagline: "调好代谢 · 养成日常",
