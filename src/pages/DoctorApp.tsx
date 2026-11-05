@@ -85,7 +85,7 @@ import {
   doctorStorageKey,
   localDateKey,
   useDoctorLocalState,
-  type DoctorChatMessage,
+  type DoctorChatMessage as StoredDoctorChatMessage,
   type DoctorDailyTasks,
   type DoctorFavorite,
   type DoctorHealthMetrics,
@@ -279,6 +279,34 @@ function FeatureSheet({ title, eyebrow = "MEDTALENT SERVICE", onClose, children 
 }
 
 const contentTypeLabels: Record<PublishedContent["type"], string> = { article: "科普文章", faq: "常见问答", notice: "公告", service: "服务说明" };
+
+type ChatSafetyMetadata = { crisis?: boolean; crisisCategory?: string };
+type DoctorChatMessage = StoredDoctorChatMessage & ChatSafetyMetadata;
+
+function parseChatSafety(value: unknown): ChatSafetyMetadata {
+  if (!value || typeof value !== "object") return {};
+  const item = value as Record<string, unknown>;
+  return {
+    ...(typeof item.crisis === "boolean" ? { crisis: item.crisis } : {}),
+    ...(typeof item.crisisCategory === "string" ? { crisisCategory: item.crisisCategory } : {}),
+  };
+}
+
+function CrisisHelpCard({ safety, reply }: { safety: ChatSafetyMetadata; reply?: string }) {
+  if (!safety.crisis) return null;
+  const emergency = safety.crisisCategory === "medical_emergency" || safety.crisisCategory === "overdose";
+  const urgent = safety.crisisCategory === "psychosis_urgent";
+  const uncertain = safety.crisisCategory === "uncertain";
+  const kind = emergency ? "emergency" : urgent ? "urgent" : "psychological";
+  return <aside className={`journey-crisis-card journey-chat-crisis-card is-${kind}`} role="alert">
+    <div><b>{uncertain ? "先确认你的安全" : emergency ? "情况可能很紧急" : urgent ? "建议尽快就诊" : "你不是一个人"}</b>
+      <p>{uncertain ? "先了解当前情况，及时获得支持。" : emergency ? "请立即求助，并请身边的人陪你。" : urgent ? "请在家人陪同下，尽快到精神科或临床心理科就诊。" : "请联系可信任的人陪在身边，一起寻求专业支持。"}</p>
+      {uncertain && reply && <p>{reply}</p>}
+      <div>{!emergency && !urgent && <><a href="tel:96525">浙江省心理援助热线 96525</a><a href="tel:12356">全国心理援助热线 12356</a></>}
+        <a href="tel:120">{emergency ? "一键拨打 120" : "紧急时拨打 120"}</a></div>
+    </div>
+  </aside>;
+}
 
 const stripStoredCitationDetails = (messages: DoctorChatMessage[]) => {
   let changed = false;
@@ -758,6 +786,7 @@ function AskPanel({
   });
   const [busy, setBusy] = useState(false);
   const [streamingReply, setStreamingReply] = useState("");
+  const [streamingSafety, setStreamingSafety] = useState<ChatSafetyMetadata>({});
   const [copiedId, setCopiedId] = useState("");
   const [voiceMode, setVoiceMode] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>("ready");
@@ -1131,6 +1160,7 @@ function AskPanel({
     setVoiceError("");
     setVoiceStatus(voiceInput || shouldSpeak ? "thinking" : "ready");
     setStreamingReply("");
+    setStreamingSafety({});
     const controller = new AbortController();
     const runId = chatRunId.current + 1;
     chatRunId.current = runId;
@@ -1166,6 +1196,11 @@ function AskPanel({
     let receivedReplyText = false;
     let reply = "";
     let retrieval: ChatRetrievalMetadata = {};
+    let safety: ChatSafetyMetadata = {};
+    const updateSafety = (value: unknown) => {
+      safety = { ...safety, ...parseChatSafety(value) };
+      setStreamingSafety(safety);
+    };
     let presentedReply = "";
     let uiTimer: number | undefined;
     const flushStreamingUi = () => {
@@ -1209,6 +1244,7 @@ function AskPanel({
         const data = await response.json() as { reply?: string; error?: string } & ChatRetrievalMetadata;
         if (!response.ok || !data.reply) throw new Error(data.error || "智能问答服务暂时不可用，请稍后再试。");
         retrieval = parseChatRetrieval(data);
+        updateSafety(data);
         appendDelta(data.reply);
         completed = true;
       } else {
@@ -1218,6 +1254,7 @@ function AskPanel({
         }
         for await (const event of readChatStream(response)) {
           if (!isCurrentRun()) throw new DOMException("Aborted", "AbortError");
+          if (event.type === "meta" || event.type === "done" || event.type === "result") updateSafety(event);
           if (event.type === "delta") appendDelta(event.text);
           else if (event.type === "error") throw new Error(event.error);
           else if (event.type === "result") {
@@ -1239,7 +1276,7 @@ function AskPanel({
       const speechFinished = speechQueue?.finish();
       if (uiTimer !== undefined) window.clearTimeout(uiTimer);
       flushStreamingUi();
-      const assistantMessage: DoctorChatMessage = { id: assistantMessageId, role: "assistant", text: reply, createdAt: new Date().toISOString(), ...retrieval };
+      const assistantMessage: DoctorChatMessage = { id: assistantMessageId, role: "assistant", text: reply, createdAt: new Date().toISOString(), ...retrieval, ...safety };
       setMessages((current) => [...current, assistantMessage].slice(-100));
       if (sharedHealthContext) setShareHealthRecords(false);
       setStreamingReply("");
@@ -1551,8 +1588,9 @@ function AskPanel({
           <motion.div className={`journey-bubble-row ${message.role} ${message.error ? "is-error" : ""}`} key={message.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}>
             {message.role === "assistant" ? <DoctorPhoto doctor={doctor} className="journey-bubble-avatar is-doctor" /> : <span className="journey-bubble-avatar"><UserCircleIcon size={18} /></span>}
             <div className="journey-bubble-content">
-              <div className="journey-message-text">{message.role === "user" && message.inputMode === "voice" ? <><span className="tang-voice-message"><WaveSineIcon size={22} /> 语音消息{message.voiceDurationSeconds ? (" · " + message.voiceDurationSeconds + " 秒") : ""}</span><details><summary>查看识别内容</summary>{formatMedicalText(message.text)}</details></> : formatMedicalText(chatMessageBody(message))}</div>
-              {message.role === "assistant" && !message.error && <MessageCitations enabled={doctor.citationsEnabled !== false} message={message} showDisclaimer={message.id !== greeting.id} />}
+              {message.role === "assistant" && !message.error && <CrisisHelpCard safety={message} reply={message.text} />}
+              {!(message.role === "assistant" && !message.error && message.crisis && message.crisisCategory === "uncertain") && <div className="journey-message-text">{message.role === "user" && message.inputMode === "voice" ? <><span className="tang-voice-message"><WaveSineIcon size={22} /> 语音消息{message.voiceDurationSeconds ? (" · " + message.voiceDurationSeconds + " 秒") : ""}</span><details><summary>查看识别内容</summary>{formatMedicalText(message.text)}</details></> : formatMedicalText(chatMessageBody(message))}</div>}
+              {message.role === "assistant" && !message.error && !message.crisis && <MessageCitations enabled={doctor.citationsEnabled !== false} message={message} showDisclaimer={message.id !== greeting.id} />}
               {message.role === "assistant" && !message.error && message.id !== greeting.id && <AnswerFeedback doctorSlug={doctor.slug} messageId={message.id} answer={message.text} question={messages.slice(0,messages.indexOf(message)).reverse().find(item=>item.role==="user")?.text||""}/> }
               <div className="journey-message-actions">
                 {message.role === "assistant" && !message.error && !templatePreview && (!doctor.builder || voiceEnabled(doctor)) && <button onClick={() => void readMessage(message)} aria-label={playingMessageId === message.id ? "停止朗读" : "朗读回复"} disabled={interactionLocked}>{playingMessageId === message.id ? <StopIcon size={14} /> : <SpeakerHighIcon size={14} />}</button>}
@@ -1566,7 +1604,7 @@ function AskPanel({
         {streamingReply && (
           <div className="journey-bubble-row assistant is-streaming" role="status" aria-live="polite" aria-label="正在流式生成回复">
             <DoctorPhoto doctor={doctor} className="journey-bubble-avatar is-doctor" />
-            <div className="journey-bubble-content"><div className="journey-message-text">{formatMedicalText(streamingReply)}<span className="journey-streaming-cursor" aria-hidden="true" /></div></div>
+            <div className="journey-bubble-content"><CrisisHelpCard safety={streamingSafety} reply={streamingReply} />{!(streamingSafety.crisis && streamingSafety.crisisCategory === "uncertain") && <div className="journey-message-text">{formatMedicalText(streamingReply)}<span className="journey-streaming-cursor" aria-hidden="true" /></div>}</div>
           </div>
         )}
         {busy && !streamingReply && <div className="journey-bubble-row assistant" role="status" aria-live="polite" aria-label="正在生成回复"><DoctorPhoto doctor={doctor} className="journey-bubble-avatar is-doctor" /><p className="journey-typing"><i /><i /><i /></p></div>}

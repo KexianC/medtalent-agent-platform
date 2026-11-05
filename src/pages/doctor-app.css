@@ -3250,3 +3250,143 @@
 
 /* Preview keeps its return action and navigation inside the phone viewport. */
 .journey-phone.is-preview{display:flex;flex-direction:column;min-height:0}.is-preview>.journey-preview-banner{flex:none}.is-preview>.journey-content{flex:1;min-height:0;height:auto}.is-preview>.journey-nav{flex:none}.journey-preview-return{display:inline-flex;align-items:center;gap:5px;margin-bottom:5px;color:#24596b;font-weight:600;text-decoration:underline}
+
+/* Chat safety cards stay expanded above the answer; other crisis cards keep their layout. */
+.journey-crisis-card.journey-chat-crisis-card {
+  margin: 0 0 10px;
+  font-size: 16px;
+  background: #fff3e6;
+  color: #713b13;
+  border-color: #b87636;
+}
+.journey-crisis-card.journey-chat-crisis-card.is-emergency {
+  background: #fff0f0;
+  color: #8a2020;
+  border-color: #c44848;
+}
+.journey-crisis-card.journey-chat-crisis-card.is-urgent {
+  background: #fff4df;
+  color: #713c00;
+  border-color: #ae7023;
+}
+.journey-crisis-card.journey-chat-crisis-card b,
+.journey-crisis-card.journey-chat-crisis-card p,
+.journey-crisis-card.journey-chat-crisis-card a { font-size: inherit; }
+.journey-crisis-card.journey-chat-crisis-card > div > div { grid-template-columns: minmax(0, 1fr); }
+.journey-crisis-card.journey-chat-crisis-card a {
+  min-height: 44px;
+  padding: 8px;
+  color: inherit;
+  border-color: currentColor;
+  background: #fff;
+  text-decoration: underline;
+}
+
+/* A01 v0.2 home replaces the five-tab dock only on its home page. */
+.is-tang-home-v02 .journey-content { height: 100%; background: #fff; }
+.is-tang-home-v02 .journey-tab-panel { min-height: 100%; }
+.is-tang-agent .journey-feature-sheet > .journey-eyebrow:empty { display: none; }
+
+/* A01 v0.3: the Chinese headings already identify each section. */
+.is-tang-agent:not(.is-tang-home-v02) .journey-eyebrow,
+.is-tang-agent .journey-version {
+  display: none;
+}
+.tang-feature-grid {
+  margin: 18px 0;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #e0e7e4;
+  border-radius: 19px;
+  background: #fff;
+}
+
+.tang-feature-group h2 {
+  margin: 0 0 10px;
+  color: var(--journey-ink);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.tang-feature-group > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.tang-feature-group button {
+  min-height: 78px;
+  padding: 10px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--journey-surface);
+  color: var(--journey-ink);
+}
+
+.tang-feature-group button > span {
+  color: var(--journey-accent-strong);
+  line-height: 1;
+}
+
+.tang-feature-group b {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.tang-feature-grid > p {
+  margin: 0;
+  color: #52685d;
+  font-size: 14px;
+  text-align: center;
+}
+
+.is-tang-agent .journey-home .journey-eyebrow { display: block; }
+.tang-expert-link { margin-left: auto; border: 0; background: transparent; color: var(--journey-accent-strong); font-size: 14px; white-space: nowrap; }
+.tang-expert-sheet h3 { margin: 16px 0 4px; color: var(--journey-accent-strong); font-size: 16px; }
+.tang-expert-sheet p { margin: 0 0 4px; }
+.journey-name-row:has(.tang-expert-link) { flex-wrap: wrap; }
+.journey-name-row:has(.tang-expert-link) h1 { white-space: nowrap; }
+.tang-expert-link { flex-basis: 100%; margin-left: 0; padding: 0; text-align: left; }
+
+/* 11 月产品讨论：唐劲松首页医生介绍和科普前置 */
+.tang-home-intro,
+.tang-home-science { margin: 14px 16px 0; padding: 16px; border-radius: 16px; background: var(--journey-surface, #fff); }
+.tang-home-intro h2,
+.tang-home-science h2 { margin: 0 0 8px; font-size: 17px; font-weight: 700; color: var(--journey-ink); }
+.tang-home-intro p { margin: 0 0 6px; font-size: 14px; line-height: 1.6; color: var(--journey-ink); }
+.tang-home-intro small { font-size: 12px; opacity: .65; }
+.tang-home-science > a,
+.tang-home-science > button { display: block; width: 100%; padding: 10px 0; border: 0; border-top: 1px solid rgba(var(--journey-accent-rgb), .15); background: none; color: var(--journey-ink); text-align: left; text-decoration: none; }
+.tang-home-science b { display: block; font-size: 14px; }
+.tang-home-science small { display: block; margin-top: 3px; font-size: 12px; line-height: 1.5; opacity: .7; }
+.tang-reply-videos:empty { display: none; }
+.tang-reply-videos a { display: block; margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: rgba(var(--journey-accent-rgb), .1); color: var(--journey-accent-strong); font-size: 13px; text-decoration: none; }
+.tang-reply-videos small { display: block; margin-top: 2px; opacity: .7; }
+.tang-home-intro::after { content: ""; display: block; clear: both; }
+.tang-home-intro img { float: right; width: 104px; height: 138px; margin: 0 0 8px 12px; border-radius: 12px; object-fit: cover; object-position: 50% 70%; }
+.tang-home-intro h3 { margin: 10px 0 4px; font-size: 14px; font-weight: 700; color: var(--journey-ink); }
+.tang-visit-summary { margin-bottom: 16px; padding: 14px; border-radius: 14px; background: rgba(var(--journey-accent-rgb), .08); }
+.tang-visit-summary h3 { margin: 0 0 8px; font-size: 15px; font-weight: 700; }
+.tang-visit-summary pre { margin: 0; white-space: pre-wrap; font: inherit; font-size: 13px; line-height: 1.6; }
+.tang-visit-summary p { margin: 0; font-size: 13px; line-height: 1.6; }
+.tang-visit-summary div { display: flex; gap: 8px; margin-top: 10px; }
+.tang-visit-summary button { flex: 1; padding: 8px; border: 1px solid rgba(var(--journey-accent-rgb), .35); border-radius: 10px; background: #fff; color: var(--journey-accent-strong); font-size: 14px; }
+@media print {
+  body * { visibility: hidden; }
+  .tang-visit-summary, .tang-visit-summary * { visibility: visible; }
+  .tang-visit-summary { position: fixed; inset: 0; margin: 0; padding: 24px; background: #fff; }
+  .tang-visit-summary div { display: none; }
+}
+.tang-home-videos { margin: 14px 16px 0; padding: 16px; border-radius: 16px; background: var(--journey-surface, #fff); }
+.tang-home-videos h2 { margin: 0 0 8px; font-size: 17px; font-weight: 700; color: var(--journey-ink); }
+.tang-home-videos > p { margin: 0; font-size: 14px; line-height: 1.6; color: #52685d; }
+.tang-home-videos > a { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid rgba(var(--journey-accent-rgb), .15); color: var(--journey-ink); text-decoration: none; }
+.tang-home-videos > a svg { flex: none; color: var(--journey-accent-strong); }
+.tang-home-videos b { display: block; font-size: 14px; }
+.tang-home-videos small { display: block; margin-top: 3px; font-size: 12px; opacity: .7; }
