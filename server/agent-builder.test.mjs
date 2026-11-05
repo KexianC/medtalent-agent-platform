@@ -12,6 +12,10 @@ import { PlatformDatabase } from "./database.mjs";
 import { normalizeAgent, normalizeContent } from "./domain.mjs";
 import { normalizeAgentBuilder, BUILTIN_AGENT_TEMPLATES, instantiateTemplateDraft, instantiateAgentTemplate, copyAgentDraft, listAgentTemplates, saveAgentAsTemplate, updateAgentTemplate, getBuilderReadiness, saveBuilderQualification, saveBuilderEvaluation, saveBuilderReview, storeBuilderEvaluationRun, recordBuilderMutation, assertBuilderPublishable } from "./agent-builder.mjs";
 import { createPlatformApp } from "./app.mjs";
+const classificationResponse = () => Response.json({
+  choices: [{ message: { content: JSON.stringify({ level: "safe", subject: "self" }) } }],
+});
+
 const seed = { slug: "legacy-one", name: "旧健康助手", hospital: "机构甲", department: "专业科普", specialty: "健康资料解释", config: { model: "unit-model" } };
 async function directory(t) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "agent-builder-test-"));
@@ -176,7 +180,7 @@ async function httpFixture(t, { configured = true } = {}) {
   const dir = await directory(t);
   let calls = 0;
   const platform = await createPlatformApp({ dataDir: dir, seedDoctors: [seed], env: configured ? { AI_API_KEY: "synthetic-builder-test-key", AI_API_URL: "https://model.invalid/v1", AI_MODEL: "builder-test-model" } : {}, startWorker: false, disableRateLimits: true,
-    fetchImpl: async () => { calls++; return new Response(JSON.stringify({ choices: [{ message: { content: "这是一段仅供测试的健康科普回答；具体情况请咨询医生。" } }] }), { headers: { "Content-Type": "application/json" } }); } });
+    fetchImpl: async (_url, options) => { calls++; if (JSON.parse(options.body).response_format?.type === "json_object") return classificationResponse(); return new Response(JSON.stringify({ choices: [{ message: { content: "这是一段仅供测试的健康科普回答；具体情况请咨询医生。" } }] }), { headers: { "Content-Type": "application/json" } }); } });
   const server = await new Promise(resolve => { const instance = platform.app.listen(0, "127.0.0.1", () => resolve(instance)); });
   t.after(async () => { await new Promise(resolve => server.close(resolve)); await platform.close(); if (path.dirname(dir) === path.resolve(os.tmpdir()) && path.basename(dir).startsWith("agent-builder-test-")) await fs.rm(dir, { recursive: true, force: true }); });
   const base = "http://127.0.0.1:" + server.address().port;
@@ -230,7 +234,7 @@ test("HTTP evaluation runs actual server questions then accepts manual scores an
   assert.equal((await f.api("POST", "/api/admin/agents/evaluation-one/evaluation", { draftHash: readiness.data.draftHash, cases: cases.map(item => ({ id: item.id, pass: true })) })).status, 409);
   const run = await f.api("POST", "/api/admin/agents/evaluation-one/evaluation/run", { draftHash: readiness.data.draftHash, cases });
   assert.equal(run.status, 200, JSON.stringify(run.data));
-  assert.equal(f.calls(), 3);
+  assert.equal(f.calls(), 6);
   assert.ok(run.data.evaluation.cases.every(item => item.answer && item.ranAt && item.pass === null));
   const score = await f.api("POST", "/api/admin/agents/evaluation-one/evaluation", { draftHash: readiness.data.draftHash, cases: cases.map(item => ({ id: item.id, pass: true, note: "人工对照已通过" })) });
   assert.equal(score.status, 200);
@@ -345,9 +349,10 @@ test("private preview and evaluation capture one transactional snapshot and rele
   };
   registerAgentBuilderRoutes(app, { database, knowledge, viewer: allow, editor: allow, admin: allow,
     env: { AI_API_KEY: "synthetic-builder-test-key", AI_API_URL: "https://model.invalid/v1", AI_MODEL: "snapshot-test-model" },
-    fetchImpl: async () => {
+    fetchImpl: async (_url, options) => {
       assert.equal(activeTransaction, 0, "external model requests must not hold a database transaction");
       providerCalls++;
+      if (JSON.parse(options.body).response_format?.type === "json_object") return classificationResponse();
       return new Response(JSON.stringify({ choices: [{ message: { content: "测试科普回答，不替代医生面诊。" } }] }), { headers: { "Content-Type": "application/json" } });
     },
   });
@@ -370,7 +375,7 @@ test("private preview and evaluation capture one transactional snapshot and rele
     cases: Array.from({ length: 3 }, (_, index) => ({ id: "question-" + index, prompt: "合成一般健康问题" + index, expected: "有限科普回答" })),
   });
   assert.equal(evaluation.status, 200);
-  assert.equal(providerCalls, 3);
+  assert.equal(providerCalls, 6);
   assert.equal(transactionId - beforeEvaluation, 2, "capture first, run without a lock, then recheck the hash and save");
   assert.equal(new Set(reads.filter(read => read.operation === "requireAgent").map(read => read.transaction)).size, 2);
   assert.ok(evaluation.data.evaluation.cases.every(item => item.answer && item.pass === null));

@@ -180,6 +180,11 @@ async function fixture(t) {
       if (url === chatEndpoint) {
         assert.equal(options.headers.Authorization, `Bearer ${env.AI_API_KEY}`);
         const request = JSON.parse(options.body);
+        // This fixture seeds only Tang: its non-streaming safety check must finish
+        // before the original controlled chat stream begins.
+        if (request.stream === false && request.response_format && request.messages.some(message => message.role === 'system' && message.content.includes('危机分类'))) {
+          return Response.json({ choices: [{ message: { content: '{"level":"safe","subject":"self"}' } }] });
+        }
         assert.equal(request.stream, true);
         assert.equal(request.messages.at(-1).content, syntheticHealthQuestion);
         chatGate.attachSignal(options.signal);
@@ -262,7 +267,8 @@ test('real chat and TTS HTTP streams deliver first PCM while both upstream done 
   assert.ok(combinedText.includes(remainder));
   assert.equal(chat.events.filter(event => event.type === 'done').length, 1);
   assert.equal(tts.events.filter(event => event.type === 'done').length, 1);
-  assert.deepEqual(f.providerRequests, [chatEndpoint, ttsEndpoint]);
+  // One extra chat endpoint call is Tang's non-streaming safety classification.
+  assert.deepEqual(f.providerRequests, [chatEndpoint, chatEndpoint, ttsEndpoint]);
   const exposed = JSON.stringify([...chat.events, ...tts.events]);
   for (const secret of [env.AI_API_KEY, env.DASHSCOPE_API_KEY, env.ADMIN_PASSWORD]) assert.equal(exposed.includes(secret), false);
 });

@@ -9,6 +9,10 @@ import { buildKnowledgeContext } from './rag.mjs';
 import { buildDoctorSystemPrompt, normalizeHealthContext } from './chat-core.mjs';
 import { validateBuilderAssessmentResults } from './builder-consumer.mjs';
 
+const classificationResponse = () => Response.json({
+  choices: [{ message: { content: JSON.stringify({ level: "safe", subject: "self" }) } }],
+});
+
 const builder = { schemaVersion:1, recordFields:[{key:'sleepHours',label:'睡眠时长',min:0,max:24}], healthContext:true };
 const doctor = { slug:'new-builder', name:'通用助手',department:'健康科普',specialty:'睡眠科普',builder,config:{healthContextEnabled:true,requireCitations:true} };
 test('citation switch changes evidence instructions without dropping the retrieved facts',()=>{
@@ -63,6 +67,7 @@ async function appFixture(t) {
  const directory=await fs.mkdtemp(path.join(os.tmpdir(),'builder-policy-api-'));const calls=[];
  const platform=await createPlatformApp({dataDir:directory,seedDoctors:[{slug:'p0-legacy',name:'本地测试助手',department:'健康科普',specialty:'一般健康知识'}],startWorker:false,disableRateLimits:true,env:{AI_API_KEY:'synthetic-provider-key',AI_MODEL:'qa-model',AI_API_URL:'https://provider.invalid/v1',DASHSCOPE_API_KEY:'synthetic-speech-key'},fetchImpl:async(url,options)=>{
    const body=JSON.parse(options.body);calls.push({url,body});
+   if(body.response_format?.type === "json_object")return classificationResponse();
    if(String(url).includes('speech-synthesizer')||String(url).includes('multimodal-generation'))return Response.json({output:{audio:{data:Buffer.from('RIFFlocal-synthetic-audio').toString('base64')}}});
    if(body.stream)return new Response('data: '+JSON.stringify({choices:[{delta:{content:'本地合成回答。'}}]})+'\n\ndata: [DONE]\n\n',{headers:{'Content-Type':'text/event-stream'}});
    return Response.json({choices:[{message:{content:'本地合成回答。'}}]});

@@ -70,13 +70,28 @@ test("ordinary emotional expressions and contextual follow-ups reach the provide
     ["它有没有副作用", [{ role: "user", content: "医生给我开了舍曲林" }, { role: "user", content: "已经两周了" }]],
   ]) {
     let calls = 0;
+    let classificationCalls = 0;
     const base = { doctor, message, history, env };
+    const classify = (body) => {
+      if (body.stream !== false || !body.response_format || !body.messages.some((item) => item.role === "system" && item.content.includes("危机分类"))) return;
+      classificationCalls += 1;
+      return Response.json({ choices: [{ message: { content: '{"level":"safe","subject":"self"}' } }] });
+    };
     const ordinary = await generateChatReply({ ...base, fetchImpl: async (_url, options) => {
+      const classification = classify(JSON.parse(options.body));
+      if (classification) return classification;
       calls += 1;
       assert.equal(JSON.parse(options.body).messages.at(-1).content, message);
       return Response.json({ choices: [{ message: { content: "听起来这几天挺难熬的，可以先说说这种感觉持续了多久。" } }] });
     } });
-    const events = await streamEvents({ ...base, fetchImpl: async () => { calls += 1; return sse("听起来这几天挺难熬的，可以先说说这种感觉持续了多久。"); } });
+    const events = await streamEvents({ ...base, fetchImpl: async (_url, options) => {
+      const classification = classify(JSON.parse(options.body));
+      if (classification) return classification;
+      calls += 1;
+      return sse("听起来这几天挺难熬的，可以先说说这种感觉持续了多久。");
+    } });
+    // Tang adds one safety classification per path; calls counts only replies.
+    assert.equal(classificationCalls, 2);
     assert.equal(calls, 2);
     assert.equal(ordinary.scope, undefined);
     assert.equal(events.at(-1).model, env.AI_MODEL);
@@ -94,6 +109,9 @@ test("direct or consented record crisis takes priority over unrelated/ambiguous 
     const ordinary = await generateChatReply(base);
     const events = await streamEvents(base);
     assert.equal(ordinary.reply, CRISIS_SUPPORT_REPLY);
+    assert.ok(ordinary.reply.split("\n\n").includes("即使这些想法只是偶尔出现，或现在没有计划或打算，也值得认真对待，建议尽快到精神科或心理科当面评估。"));
+    for (const hotline of ["120", "110", "96525", "12356"]) assert.ok(ordinary.reply.includes(hotline));
+    assert.equal(events.filter((event) => event.type === "delta").map((event) => event.text).join(""), CRISIS_SUPPORT_REPLY);
     assert.equal(ordinary.crisis, true);
     assert.equal(events.at(-1).crisis, true);
     assert.equal(called, false);
@@ -102,7 +120,8 @@ test("direct or consented record crisis takes priority over unrelated/ambiguous 
 
 test("scope gate stays specific to Tang and retains output credential filtering", async () => {
   let called = false;
-  const result = await generateChatReply({ doctor: { ...doctor, slug: "other-doctor" }, message: "帮我写个程序", env, history: [], fetchImpl: async () => {
+  const result = await generateChatReply({ doctor: { ...doctor, slug: "other-doctor" }, message: "帮我写个程序", env, history: [], fetchImpl: async (_url, options) => {
+    if (JSON.parse(options.body).response_format) return Response.json({ choices: [{ message: { content: JSON.stringify({ level: "safe", subject: "self" }) } }] });
     called = true;
     return Response.json({ choices: [{ message: { content: "这是其他医生原有的回复路径。" } }] });
   } });
