@@ -1,3 +1,4 @@
+import { CloudIcon, WavesIcon, LeafIcon, SmileyIcon, SunIcon } from '@phosphor-icons/react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ClipboardList, Heart, RotateCcw, X } from 'lucide-react';
 import { createLocalId, useDoctorLocalState, type DoctorPrivacySettings } from '../../hooks/useDoctorLocalState';
@@ -9,10 +10,14 @@ import {
   TANG_SUPPLEMENT_LIMIT, normalizeTangSupplement, updateTangAssessmentSupplement,
   describeTangAssessment, needsPhq9Support, PHQ9_SUPPORT, type TangScale, type TangAssessmentResult,
 } from './guidanceModel';
+import { buildScaleAdvice } from '../tang-home/riskRules.mjs';
 import './tang-chat-guidance.css';
 
-type TangChatGuidanceProps = {
+const moodIcons = { low: CloudIcon, tense: WavesIcon, neutral: LeafIcon, good: SmileyIcon, bright: SunIcon };
+
+type TangChatGuidanceProps = { embedded?: boolean; startWithScales?: boolean;
   disabled: boolean;
+  onOpenClinic?: () => void;
   onSend: (text: string) => Promise<boolean> | boolean;
 };
 
@@ -60,7 +65,7 @@ function TangQuestionnaire({ scale, onComplete, onCancel }: {
   </section>;
 }
 
-function TangResult({ result, storageNotice, disabled, onDiscuss, onSaveSupplement, onRepeat, onClose }: {
+function TangResult({ result, storageNotice, disabled, onDiscuss, onSaveSupplement, onRepeat, onClose, onOpenClinic }: {
   result: TangAssessmentResult;
   storageNotice: string;
   disabled: boolean;
@@ -68,7 +73,9 @@ function TangResult({ result, storageNotice, disabled, onDiscuss, onSaveSuppleme
   onSaveSupplement: (supplement: string) => boolean;
   onRepeat: () => void;
   onClose: () => void;
+  onOpenClinic?: () => void;
 }) {
+  const advice = buildScaleAdvice(result.scaleId, result.score);
   const scale = TANG_RESULT_SCALES.find(item => item.id === result.scaleId)!;
   const heading = useRef<HTMLHeadingElement>(null);
   const noteId = useId();
@@ -90,6 +97,7 @@ function TangResult({ result, storageNotice, disabled, onDiscuss, onSaveSuppleme
     <p className="tang-guide-caption"><strong>{describeTangAssessment(result.scaleId, result.score)?.label}</strong>。{describeTangAssessment(result.scaleId, result.score)?.text}</p>
     {needsPhq9Support(result.scaleId, result.answers) && <p className="tang-guide-feedback" role="alert">{PHQ9_SUPPORT}</p>}
     <p className="tang-guide-caption">这是对近两周感受的自我记录，不能用于诊断。若困扰持续或影响生活，可以寻求专业支持。</p>
+    {advice && <><p className="tang-guide-feedback">{advice}</p>{onOpenClinic && <div className="tang-guide-actions"><button type="button" className="tang-guide-secondary" onClick={onOpenClinic}>查看门诊指引</button></div>}</>}
     <details className="tang-guide-answers"><summary>查看回答与计分</summary><ol>{scale.questions.map((question, index) => <li key={question.text}><span>{question.text}</span><strong>{question.options[result.answers[index]]}{index < scale.scoredItems ? ` · ${result.answers[index]} 分` : ' · 不计分'}</strong></li>)}</ol><p>{scale.scoredItems} 道计分题，每题 0–3 分，相加得到总分。{scale.questions.length > scale.scoredItems ? '生活影响补充题不计入总分。' : ''}</p></details>
     <div className="tang-guide-supplement">
       <label htmlFor={noteId}><strong>补充描述（选填，不计分）</strong></label>
@@ -106,13 +114,13 @@ function TangResult({ result, storageNotice, disabled, onDiscuss, onSaveSuppleme
   </section>;
 }
 
-export function TangChatGuidance({ disabled, onSend }: TangChatGuidanceProps) {
+export function TangChatGuidance({ disabled, onSend, embedded = false, startWithScales = false, onOpenClinic }: TangChatGuidanceProps) {
   const account = useConsumerSession();
   const [privacy] = useDoctorLocalState<DoctorPrivacySettings>('tang-jinsong', 'privacy', { saveChat: true, voicePlayback: true, reminders: true });
   const [storedResults, setStoredResults, persistence] = useDoctorLocalState<TangAssessmentResult[]>('tang-jinsong', TANG_ASSESSMENT_SECTION, [], privacy.saveChat);
   const [sessionResults, setSessionResults] = useState<TangAssessmentResult[]>([]);
   const [expanded, setExpanded] = useState(true);
-  const [showScales, setShowScales] = useState(false);
+  const [showScales, setShowScales] = useState(startWithScales);
   const [activeScale, setActiveScale] = useState<TangScale | null>(null);
   const [result, setResult] = useState<TangAssessmentResult | null>(null);
   const [sending, setSending] = useState(false);
@@ -188,15 +196,15 @@ export function TangChatGuidance({ disabled, onSend }: TangChatGuidanceProps) {
     : persistence.status === 'ready' ? '已保存在当前设备。' : '结果仅保留在本次页面中，尚未保存到本机。';
 
   return <section className={`tang-chat-guidance${expanded ? ' is-expanded' : ''}`} aria-label="对话引导">
-    <button type="button" className="tang-guide-toggle" aria-expanded={expanded} aria-controls={contentId} onClick={() => setExpanded(current => !current)}>
+    {!embedded && <button type="button" className="tang-guide-toggle" aria-expanded={expanded} aria-controls={contentId} onClick={() => setExpanded(current => !current)}>
       <span><Heart size={16} aria-hidden="true" /><strong>{expanded ? '从此刻的感受开始' : activeScale ? '继续心理自评' : '心情记录 · 心理自评'}</strong></span>
       <span className="tang-guide-toggle-label">{expanded ? '收起' : '展开'}{expanded ? <ChevronUp size={15} aria-hidden="true" /> : <ChevronDown size={15} aria-hidden="true" />}</span>
-    </button>
-    <div id={contentId} hidden={!expanded} className="tang-guide-content">
+    </button>}
+    <div id={contentId} hidden={!embedded && !expanded} className="tang-guide-content">
       {activeScale ? <TangQuestionnaire key={activeScale.id} scale={activeScale} onComplete={finish} onCancel={() => { setActiveScale(null); setResult(previousResult.current); setShowScales(!previousResult.current); }} />
-        : result ? <TangResult key={result.id} result={result} storageNotice={storageNotice} disabled={pending} onSaveSupplement={saveSupplement} onDiscuss={includeSupplement => void send(buildTangAssessmentMessage(result, includeSupplement))} onRepeat={() => start(TANG_SCALES.find(scale => scale.id === (result.scaleId === 'phq2' ? 'phq9' : result.scaleId))!)} onClose={() => setResult(null)} />
+        : result ? <TangResult key={result.id} onOpenClinic={onOpenClinic} result={result} storageNotice={storageNotice} disabled={pending} onSaveSupplement={saveSupplement} onDiscuss={includeSupplement => void send(buildTangAssessmentMessage(result, includeSupplement))} onRepeat={() => start(TANG_SCALES.find(scale => scale.id === (result.scaleId === 'phq2' ? 'phq9' : result.scaleId))!)} onClose={() => setResult(null)} />
           : showScales ? <div className="tang-guide-scales">
-            <div className="tang-guide-row"><strong>用一份短问卷了解自己</strong><button type="button" className="tang-guide-close" aria-label="返回心情选择" onClick={() => setShowScales(false)}><X size={17} aria-hidden="true" /></button></div>
+            <div className="tang-guide-row"><strong>用一份短问卷了解自己</strong>{!startWithScales && <button type="button" className="tang-guide-close" aria-label="返回心情选择" onClick={() => setShowScales(false)}><X size={17} aria-hidden="true" /></button>}</div>
             <p className="tang-guide-caption">面向 18 岁及以上成人，回顾近两周的感受。自评不能代替专业诊断。</p>
             <p className="tang-guide-private">量表来源：<a href={ASSESSMENT_SOURCE} target="_blank" rel="noreferrer">中文量表</a> · <a href={ASSESSMENT_MANUAL} target="_blank" rel="noreferrer">计分说明</a></p>
             <div className="tang-guide-scale-list">{TANG_SCALES.map(scale => <button type="button" key={scale.id} onClick={() => start(scale)}><span><strong>{scale.title}</strong><small>{scale.duration} · {scale.scoredItems} 题{scale.questions.length > scale.scoredItems ? ' + 1 道补充题' : ''}</small></span><ArrowRight size={16} aria-hidden="true" /></button>)}</div>
@@ -204,7 +212,7 @@ export function TangChatGuidance({ disabled, onSend }: TangChatGuidanceProps) {
           </div>
             : <>
               <p className="tang-guide-caption">今天心情怎么样？选一个，我们慢慢聊。</p>
-              <div className="tang-guide-moods" role="group" aria-label="选择今天的心情并开始对话">{TANG_MOODS.map(mood => <button type="button" key={mood.id} disabled={pending} aria-pressed={selectedMood === mood.id} onClick={() => void send(buildTangMoodMessage(mood.id), mood.id)}><span className="tang-guide-mood-symbol" aria-hidden="true">{mood.symbol}</span><span>{mood.label}</span></button>)}</div>
+              <div className="tang-guide-moods" role="group" aria-label="选择今天的心情并开始对话">{TANG_MOODS.map(mood => { const MoodIcon = moodIcons[mood.id]; return <button type="button" key={mood.id} disabled={pending} aria-pressed={selectedMood === mood.id} onClick={() => void send(buildTangMoodMessage(mood.id), mood.id)}><span className="tang-guide-mood-symbol" aria-hidden="true"><MoodIcon size={24} weight="regular" aria-hidden="true" /></span><span>{mood.label}</span></button>; })}</div>
               <button type="button" className="tang-guide-assess-link" onClick={() => setShowScales(true)}><span><ClipboardList size={17} aria-hidden="true" /><strong>做个心理自评</strong><small>约 2–3 分钟</small></span><ArrowRight size={16} aria-hidden="true" /></button>
               {results.length > 0 && <div className="tang-guide-recent"><span>最近自评</span>{results.map(entry => <button type="button" key={entry.id} onClick={() => { setResult(entry); setFeedback(''); }}>{entry.scaleId.toUpperCase().replace('GAD7', 'GAD-7').replace('PHQ2', 'PHQ-2（历史）').replace('PHQ9', 'PHQ-9')} · {entry.score}/{entry.maxScore} 分<ArrowRight size={12} aria-hidden="true" /></button>)}</div>}
             </>}

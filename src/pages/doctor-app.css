@@ -2986,6 +2986,7 @@
 .journey-citations li { display: flex; gap: 4px; padding: 0; color: #52665d; font-size: 10px; line-height: 1.6; overflow-wrap: anywhere; }
 .journey-citations li > span { flex: 0 0 auto; color: var(--journey-accent-strong); }
 .journey-no-citations { margin: 4px 3px 0; color: #83938c; font-size: 10px; line-height: 1.6; }
+.journey-tang-source { margin: 4px 3px 0; display: flex; align-items: center; gap: 5px; color: #536b62; font-size: 11px; line-height: 1.6; }
 .journey-reply-disclaimer { margin: 2px 3px 0; color: #788b82; font-size: 9px; line-height: 1.6; overflow-wrap: anywhere; }
 .journey-reply-disclaimer + .journey-message-actions { padding-top: 0; }
 .journey-published-list > button:focus-visible,

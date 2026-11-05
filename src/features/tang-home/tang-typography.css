@@ -1,0 +1,37 @@
+/* Feature sheets normally portal into .journey-phone inside .is-tang-agent.
+   Cover the body fallback as well, only while a Tang page is mounted. */
+:is(.is-tang-agent, body:has(.is-tang-agent) > .journey-sheet-backdrop) {
+  --tang-font: -apple-system, BlinkMacSystemFont, "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Microsoft YaHei", sans-serif;
+  font-size: 15px !important;
+  line-height: 1.65;
+}
+:is(.is-tang-agent, body:has(.is-tang-agent) > .journey-sheet-backdrop),
+:is(.is-tang-agent, body:has(.is-tang-agent) > .journey-sheet-backdrop) * {
+  font-family: var(--tang-font) !important;
+}
+:is(.is-tang-agent, body:has(.is-tang-agent) > .journey-sheet-backdrop) :is(h1, .journey-sheet > h2) {
+  font-size: 26px !important;
+  font-weight: 600 !important;
+}
+:is(.is-tang-agent, body:has(.is-tang-agent) > .journey-sheet-backdrop) :is(h2, h3) {
+  font-size: 17px !important;
+  font-weight: 600 !important;
+}
+.is-tang-agent .tang-card > header h2,
+.is-tang-agent .tang-expert-sheet .tang-bio h3,
+.is-tang-agent .tang-svc h3,
+.is-tang-agent .tang-summary-trend h3 {
+  font-size: 17px !important;
+  font-weight: 600 !important;
+}
+:is(.is-tang-agent, body:has(.is-tang-agent) > .journey-sheet-backdrop) :is(p, li, textarea, input, label),
+.is-tang-agent .tang-card .tang-card-panel p,
+.is-tang-agent .tang-expert-sheet .tang-bio :is(p, li),
+.is-tang-agent .tang-visit-summary pre {
+  font-size: 15px !important;
+  line-height: 1.65;
+}
+:is(.is-tang-agent, body:has(.is-tang-agent) > .journey-sheet-backdrop) :is(small, .tang-svc-note, .tang-bio-hint, .tang-source-note p, .tang-source-note li, .journey-stat-note, .journey-sheet-disclaimer, .tang-guide-private, .tang-bio footer) {
+  font-size: 13px !important;
+  line-height: 1.65;
+}
