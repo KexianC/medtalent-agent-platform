@@ -14,7 +14,7 @@ import "./tang-services.css";
 export const MEDICATION_SECTION = "tang-medication-v1";
 export const SMOKING_SECTION = "tang-smoking-v1";
 export const RELAX_SECTION = "tang-relax-v1";
-const EMERGENCY = "目前留言不会转给医生，也没有人工回复。如遇紧急情况，请立即拨打 120 或前往急诊。";
+const EMERGENCY = "留言只保存在你这台设备的就诊准备里，医生看不到，也不会有人回复。如遇紧急情况，请立即拨打 120 或前往急诊。";
 
 // Demo data stays in this browser only; it never goes through the account sync.
 export function useTangLocal<T>(section: string, fallback: T): [T, (next: T) => void] {

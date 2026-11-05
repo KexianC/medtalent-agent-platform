@@ -84,7 +84,7 @@ test('empty visit summary shows only the empty-state guidance, without trend pla
 
 test('message panel saves to visit preparation, stays honest about delivery and keeps the emergency line', () => {
   const html = render(TangMessagePanel, { onSubmit() {}, onPrepare() {} });
-  assert.match(html, /目前留言不会转给医生，也没有人工回复。如遇紧急情况，请立即拨打 120 或前往急诊。/);
+  assert.match(html, /留言只保存在你这台设备的就诊准备里，医生看不到，也不会有人回复。如遇紧急情况，请立即拨打 120 或前往急诊。/);
   assert.match(html, /保存到就诊准备/);
   assert.doesNotMatch(html, /已发送|联系医生团队/);
 });
