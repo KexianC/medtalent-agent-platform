@@ -5,6 +5,12 @@ const { enterSheet, exitSheet, resetSheet } = require('../../utils/sheet-motion'
 const { getRuntime } = require('../../utils/runtime');
 const plans = require('../../utils/models/service-plans');
 const planSection = 'service-plans-v1';
+const tangFeatureGroups = [
+  { title: '常用功能', items: [{ label: '病友信息', iconUrl: icon('user', 'theme-tang-jinsong') }, { label: '人工咨询', iconUrl: icon('headphones', 'theme-tang-jinsong') }, { label: '科普宣教', iconUrl: icon('book', 'theme-tang-jinsong') }] },
+  { title: '智能测试', items: [{ label: '量表测试', iconUrl: icon('chart', 'theme-tang-jinsong') }, { label: '报告解读', iconUrl: icon('file', 'theme-tang-jinsong') }, { label: '睡眠日记', iconUrl: icon('moon', 'theme-tang-jinsong') }] },
+  { title: '情绪与睡眠管理', items: [{ label: '情绪预警', iconUrl: icon('bell', 'theme-tang-jinsong') }, { label: '放松练习', iconUrl: icon('leaf', 'theme-tang-jinsong') }, { label: '就诊准备', iconUrl: icon('clipboard', 'theme-tang-jinsong') }, { label: '练习打卡', iconUrl: icon('check', 'theme-tang-jinsong') }] },
+  { title: '医疗服务', items: [{ label: '预约挂号', iconUrl: icon('calendarCheck', 'theme-tang-jinsong') }, { label: '复诊开方', iconUrl: icon('stethoscope', 'theme-tang-jinsong') }, { label: '报告查询', iconUrl: icon('firstAid', 'theme-tang-jinsong') }, { label: '更多服务', iconUrl: icon('services', 'theme-tang-jinsong') }] },
+];
 function configuredServices(doctor) { return doctor.builder ? doctor.builder.servicePlans.map(plan => plan.title) : doctor.services || []; }
 function configuredWorkflow(doctor, title) { const plan = doctor.builder && doctor.builder.servicePlans.find(plan => plan.title === title); return plan ? { definition:plan, description: plan.description || '整理自己的准备进度与待问问题。', steps: plan.steps.map(step => step.title), details: Object.fromEntries(plan.steps.map(step => [step.title, step.description || ''])), action: 'prepare', question: '我想进一步了解' + title } : plans.getServiceWorkflow(doctor.slug, title); }
 const confirm = content => new Promise(resolve => wx.showModal({ title: '请确认', content, success: result => resolve(Boolean(result.confirm)), fail: () => resolve(false) }));
@@ -38,12 +44,13 @@ Component({
   },
   observers: { 'doctor,experience,mode': function () { this.refresh(); } },
   data: {
-    content: [], services: [], savedPlans: [], isTang: false, exp: null, selected: null, selectedService: null, sheetHeight: 0, sheetMotion: '', backdropMotion: '', plan: null, planSteps: [], planDirty: false, planConflict: false, planError: '', planNotice: '', planAction: '', planPreview: '', planCanEdit: true, planStorageNotice: '',
+    tangFeatureGroups, content: [], services: [], savedPlans: [], isTang: false, exp: null, selected: null, selectedService: null, sheetHeight: 0, sheetMotion: '', backdropMotion: '', plan: null, planSteps: [], planDirty: false, planConflict: false, planError: '', planNotice: '', planAction: '', planPreview: '', planCanEdit: true, planStorageNotice: '',
     icons: { chevron: icon('chevron', 'muted'), shield: icon('shield', 'me-disclaimer'), boundaryShield: icon('shield', 'chat-warning'), clipboard: icon('clipboard', 'white'), chat: icon('chat', 'white'), chatFill: icon('chat-fill', 'white'), close: icon('close'), check: icon('check', 'accent') },
   },
   lifetimes: { attached() { this._alive = true; this._sheetFitUnavailable = false; this.runtime = getRuntime(); this._unsubscribe = this.runtime.subscribe(() => this.refresh()); this.refresh(); }, detached() { this._alive = false; this._sheetFitUnavailable = true; if (this._unsubscribe) this._unsubscribe(); resetSheet(this); } },
   pageLifetimes: { show() { this._sheetFitUnavailable = false; fitSheet(this, 720, true); }, resize() { fitSheet(this, 720, true); }, hide() { this._sheetFitUnavailable = true; } },
   methods: {
+    openTangFeature(event) { wx.showToast({ title: event.currentTarget.dataset.label + '正在筹备中', icon: 'none' }); },
     owner() { const runtime = this.runtime || getRuntime(), account = runtime.session.get(); return account.user && account.user.id || (runtime.data.getVisitorId ? 'guest:' + runtime.data.getVisitorId() : 'guest'); },
     scope() { return this.properties.doctor && this.properties.doctor.slug + ':' + this.properties.mode + ':' + this.owner(); },
     scopeActive(scope) { return this._alive !== false && !this._sheetFitUnavailable && scope === this.scope(); },

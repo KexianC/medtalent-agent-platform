@@ -1,6 +1,7 @@
 <view wx:if="{{doctor}}" class="{{layoutClass}} education-shell {{mode === 'services' ? 'journey-simple-panel journey-services-panel' : 'journey-published-shell'}} {{isTang ? 'is-tang' : ''}}">
   <block wx:if="{{mode === 'services'}}">
     <view wx:if="{{!compact}}" class="panel-header"><text class="journey-eyebrow">PROFESSIONAL SERVICES</text><text class="panel-title">专业健康服务</text><text class="panel-description">根据当前智能体的服务配置提供健康科普与信息整理。</text></view>
+    <view wx:if="{{isTang && !compact}}" class="tang-feature-grid"><view wx:for="{{tangFeatureGroups}}" wx:for-item="group" wx:key="title" class="tang-feature-group"><text class="tang-feature-title">{{group.title}}</text><view class="tang-feature-row"><button wx:for="{{group.items}}" wx:key="label" data-label="{{item.label}}" bindtap="openTangFeature"><image src="{{item.iconUrl}}"/><text>{{item.label}}</text></button></view></view></view>
     <button wx:if="{{!compact}}" class="journey-primary-button manage-button" hover-class="primary-pressed" hover-start-time="0" hover-stay-time="0" bindtap="manage"><image src="{{icons.clipboard}}"/>填写记录与查看统计</button>
     <text wx:if="{{compact}}" class="published-heading">我的服务清单</text>
     <view wx:if="{{planStorageNotice}}" class="service-plan-warning" role="status"><text>{{planStorageNotice}}</text><button class="service-plan-secondary" bindtap="retryPlanStorage" disabled="{{planRetrying}}">{{planRetrying ? '正在重试…' : '重试保存与同步'}}</button></view>
