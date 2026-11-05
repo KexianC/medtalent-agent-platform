@@ -120,11 +120,12 @@ import ConsumerServicesPanel from "../features/services/ConsumerServicesPanel";
 import ServicePlanWorksheet from "../features/services/ServicePlanWorksheet";
 import TangFeatureGrid from "../features/services/TangFeatureGrid";
 import TangDoctorBio, { TangDoctorCard } from "../features/tang-home/TangDoctorBio";
-import { DoctorVideoItem, MEDICATION_SECTION, SMOKING_SECTION, TangEducationPanel, TangVisitSummary, TangClinicPanel, TangFamilyPanel, TangMessagePanel, TangMorePanel, TangRelaxPanel, TangMedicationPanel, TangSmokingPanel, useTangLocal } from "../features/tang-home/TangServicePanels";
+import { DoctorVideoItem, EducationArticle, SpecialtyVisitSummary, TangEducationPanel, TangVisitSummary, TangClinicPanel, TangFamilyPanel, TangMessagePanel, TangMorePanel, TangRelaxPanel, TangMedicationPanel, TangSmokingPanel } from "../features/tang-home/TangServicePanels";
 import { DEMO_PREFIX, demoReply } from "../features/tang-home/demoReplies.mjs";
-import { doctorCustoms, enabledGroups, noticeLines } from "../features/services/doctorCustom";
+import { chenDemoReply } from "../features/services/chenEducation";
+import { DoctorMaterials } from "../features/services/DoctorMaterials";
+import { doctorCustoms, enabledGroups, noticeLines, usesUnifiedTemplate } from "../features/services/doctorCustom";
 import { matchDoctorVideos } from "../features/services/videoMatch.mjs";
-import { buildMedicationLines, buildVisitSummary } from "../features/services/visitSummary.mjs";
 import { emptyServicePlans, normalizeServicePlans, saveServicePlan } from "../lib/servicePlans";
 import { buildSpecialtyStats, getSpecialtyRecordConfig } from "../lib/specialtyRecords";
 import { useWellnessDay } from "../features/yuwen/useWellnessDay";
@@ -534,6 +535,7 @@ function HomePanel({
   const [assessmentOpen, setAssessmentOpen] = useState(false);
   const [recordSection, setRecordSection] = useState<TangRecordSection>("all");
   const isTang = usesTangRecords(doctor);
+  const unified = usesUnifiedTemplate(doctor);
   const today = useWellnessDay();
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [records, setRecords] = useDoctorLocalState<DoctorHealthRecord[]>(doctor.slug, "health-records", []);
@@ -610,16 +612,16 @@ function HomePanel({
 
   const homeResources = <>
     <motion.section className="journey-concerns" {...fadeUp(reduced)}>
-      <header><div><span className="journey-eyebrow">WEEKLY FOCUS</span><h2>本周大家最关心</h2></div><ChatCircleDotsIcon size={24} weight="duotone" /></header>
+      <header><div><span className="journey-eyebrow">{unified && !isTang ? "FAQ" : "WEEKLY FOCUS"}</span><h2>{unified && !isTang ? "常见问题" : "本周大家最关心"}</h2></div><ChatCircleDotsIcon size={24} weight="duotone" /></header>
       {experience.concerns.map((item) => <button key={item.title} onClick={() => onAsk(item.title)}><span><JourneyIcon name={item.icon} size={22} /></span><div><b>{item.title}</b><p>{item.description}</p></div><CaretRightIcon size={18} /></button>)}
     </motion.section>
     {componentEnabled(doctor, "content") && <PublishedContentSection content={doctor.content} onAsk={onAsk} />}
   </>;
 
-  const tangBio = isTang ? doctorCustoms[doctor.slug]?.bio : undefined;
+  const tangBio = unified ? doctorCustoms[doctor.slug]?.bio : undefined;
 
   return (
-    <div className={`journey-home${isTang ? " journey-tang-home" : ""}`}>
+    <div className={`journey-home${unified ? " journey-tang-home" : ""}`}>
       <section className="journey-hero">
         <div className="journey-topbar">
           <div className="journey-brandline"><span><BabyIcon size={17} weight="duotone" /></span><b>{experience.tagline}</b></div>
@@ -657,23 +659,23 @@ function HomePanel({
         <div className="journey-specialty-tags">
           {(tangBio ? tangBio.tags : doctor.topics.slice(0, 3)).map((topic) => <span key={topic}>{topic}</span>)}
         </div>
-        {isTang && <div className="journey-tang-start">
+        {unified && <div className="journey-tang-start">
           <button className="journey-primary-button" onClick={() => onAsk()}><ChatCircleDotsIcon size={20} weight="fill" /> 开始对话 <CaretRightIcon size={18} /></button>
-          <p>聊聊最近的睡眠、情绪，或你正在经历的困扰。</p>
+          <p>{isTang ? "聊聊最近的睡眠、情绪，或你正在经历的困扰。" : doctor.intro}</p>
         </div>}
       </section>
 
-      {isTang && <>
+      {unified && <>
         {tangBio ? <TangDoctorCard bio={tangBio} onTopic={topic => onAsk(`我想了解${topic}`)} onAll={() => onExpert?.()} /> : <section className="tang-home-intro" aria-label="医生介绍">{doctorCustoms[doctor.slug]?.introPhoto && <img src={doctorCustoms[doctor.slug].introPhoto} alt={`${doctor.name}医生`} />}<h2>{doctor.name}医生介绍</h2><p>{doctor.title}</p><h3>专业擅长</h3><p>{doctor.specialty}</p>{doctorCustoms[doctor.slug]?.expertSections.map(section => <div key={section.title}><h3>{section.title}</h3><p>{section.body}</p></div>)}<small>信息仅用于健康科普与就医准备，不替代医生诊断。</small></section>}
-        <section className="tang-home-videos" aria-label="科普视频"><h2>科普视频</h2>
+        {Boolean(doctorCustoms[doctor.slug]?.videos.length || doctorCustoms[doctor.slug]?.videoPlaceholders?.length) && <section className="tang-home-videos" aria-label="科普视频"><h2>科普视频</h2>
           {(doctorCustoms[doctor.slug]?.videos || []).length ? doctorCustoms[doctor.slug].videos.map(video => <DoctorVideoItem key={video.title} video={video} iconSize={34} linkSuffix=" · 打开视频" />) : <TangVideoPlaceholders titles={doctorCustoms[doctor.slug]?.videoPlaceholders || []} />}
-        </section>
-        <section className="tang-home-science" aria-label="健康科普"><h2>科普文章</h2>
-          {doctor.articles.map(article => <button key={article.id} type="button" onClick={() => onAsk(article.title)}><b>{article.title}</b><small>{article.summary}</small></button>)}
-        </section>
+        </section>}
+        {doctor.articles.length > 0 && <section className="tang-home-science" aria-label="健康科普"><h2>科普文章</h2>
+          {doctor.articles.slice(0, 3).map(article => <button key={article.id} type="button" onClick={() => onAsk(article.title)}><b>{article.title}</b><small>{article.summary}</small></button>)}
+        </section>}
       </>}
 
-      {doctor.builder ? <BuilderHomeSections doctor={doctor} experience={experience} onAsk={onAsk} onManage={onManage} onWellnessOpen={onWellnessOpen} recordedDays={recordedDays} /> : usesWellness(doctor) && onWellnessOpen ? <WellnessHome onOpen={onWellnessOpen} /> : !isTang && componentEnabled(doctor, "records") && <motion.section className="journey-assessment" {...fadeUp(reduced)}>
+      {doctor.builder ? <BuilderHomeSections doctor={doctor} experience={experience} onAsk={onAsk} onManage={onManage} onWellnessOpen={onWellnessOpen} recordedDays={recordedDays} /> : usesWellness(doctor) && onWellnessOpen ? <WellnessHome onOpen={onWellnessOpen} /> : !unified && componentEnabled(doctor, "records") && <motion.section className="journey-assessment" {...fadeUp(reduced)}>
         <header className="journey-card-heading">
           <div>
             <span className="journey-eyebrow">YOUR HEALTH JOURNEY</span>
@@ -718,9 +720,9 @@ function HomePanel({
         </div>
       </motion.section>}
 
-      {!doctor.builder && (isTang ? <details className="journey-tang-disclosure journey-tang-resources"><summary>近期关注 <CaretRightIcon size={18} /></summary>{homeResources}</details> : homeResources)}
+      {!doctor.builder && (unified ? <details className="journey-tang-disclosure journey-tang-resources"><summary>近期关注 <CaretRightIcon size={18} /></summary>{homeResources}</details> : homeResources)}
 
-      {isTang ? null : <section className="journey-expert-note">
+      {unified ? null : <section className="journey-expert-note">
         <span>{doctor.name.slice(0, 1)}</span>
         <div><b>{doctor.name}{doctorExperiences[doctor.slug] ? "医生智能体" : "智能体"}</b><p>{doctor.intro}</p></div>
         <button onClick={() => onAsk()}>立即提问</button>
@@ -806,7 +808,7 @@ function AskPanel({
   const greeting = useMemo<DoctorChatMessage>(() => ({
     id: `greeting-${doctor.slug}`,
     role: "assistant",
-    text: (doctor.slug === "tang-jinsong" ? "内容由大模型生成，不是医生本人回复。\n" : "") + (doctor.welcomeMessage || (doctor.slug === "tang-jinsong"
+    text: (usesUnifiedTemplate(doctor) ? "内容由大模型生成，不是医生本人回复。\n" : "") + (doctor.welcomeMessage || (doctor.slug === "tang-jinsong"
       ? "你好，我先听你说。可以聊睡眠、情绪和日常状态；我会尽量用短话讲清楚，再给你一两个能做的建议。这里仅做科普，不能替代面诊。"
       : `您好，这里是${doctor.name}的健康问答。我可以围绕${doctor.specialty || "日常健康知识"}提供健康科普和就医准备建议。我的回复不能替代医生面诊、诊断或处方。`)),
     createdAt: new Date().toISOString(),
@@ -871,7 +873,7 @@ function AskPanel({
   const recorder = useWavRecorder();
   const cancelRecorder = recorder.cancel;
   const hasVoiceConversation = voiceEnabled(doctor);
-  const showVoiceStatus = hasVoiceConversation && ((doctor.slug !== "tang-jinsong" && voiceHintDismissed !== true && (voiceMode || !messages.some((message) => message.role === "user"))) || voiceStatus !== "ready" || playbackStatus !== "idle" || Boolean(voiceError));
+  const showVoiceStatus = hasVoiceConversation && ((!usesUnifiedTemplate(doctor) && voiceHintDismissed !== true && (voiceMode || !messages.some((message) => message.role === "user"))) || voiceStatus !== "ready" || playbackStatus !== "idle" || Boolean(voiceError));
   const voiceCapturing = ["starting", "recording", "transcribing"].includes(voiceStatus);
   const interactionLocked = busy || voiceCapturing;
   const voiceElapsedLabel = (voiceElapsed === 60 ? "01:00" : "00:" + String(voiceElapsed).padStart(2, "0"));
@@ -1359,8 +1361,8 @@ function AskPanel({
       if (shouldSpeak) {
         stopPlayback();
       }
-      if (doctor.slug === "tang-jinsong" && error instanceof Error && error.message.includes("尚未配置")) {
-        const demoText = demoReply(question);
+      if (usesUnifiedTemplate(doctor) && error instanceof Error && error.message.includes("尚未配置")) {
+        const demoText = usesTangRecords(doctor) ? demoReply(question) : chenDemoReply(question);
         setMessages((current) => [...current, { id: assistantMessageId, role: "assistant" as const, text: demoText, createdAt: new Date().toISOString() }].slice(-100));
         return demoText;
       }
@@ -1611,7 +1613,7 @@ function AskPanel({
     <div className={`journey-chat ${hasVoiceConversation ? "tang-chat" : ""}`}>
       <header className="journey-inner-header">
         <DoctorPhoto doctor={doctor} className="journey-mini-avatar" />
-        <div className="journey-chat-identity">{doctor.slug !== "tang-jinsong" && <span>{experience.tagline}</span>}<h1>{doctor.slug === "tang-jinsong" ? "健康问答" : doctor.name}</h1><p><i /> 健康科普智能助手</p></div>
+        <div className="journey-chat-identity">{!usesUnifiedTemplate(doctor) && <span>{experience.tagline}</span>}<h1>{usesUnifiedTemplate(doctor) ? "健康问答" : doctor.name}</h1><p><i /> 健康科普智能助手</p></div>
         <div className="journey-chat-tools">
           {hasVoiceConversation && <button className="journey-voice-entry" onClick={() => { setPrivacy((current) => ({ ...current, voicePlayback: !current.voicePlayback })); if (privacy.voicePlayback) stopSpeaking(); else { void ensureSpeechAudioContext().catch(() => undefined); setVoiceError(""); } }} aria-label="语音回复自动播报" aria-pressed={privacy.voicePlayback} title="控制后续回复的自动播报，已有回复可点击喇叭朗读"><SpeakerHighIcon size={16} /> 自动播报{privacy.voicePlayback ? "开" : "关"}</button>}
           <button className="journey-clear-chat" onClick={clearChat} aria-label="清空对话" disabled={messages.length <= 1 && !busy && !voiceCapturing}><TrashIcon size={17} /></button>
@@ -1640,9 +1642,9 @@ function AskPanel({
         if (event.target instanceof Element && event.target.closest("summary")) scrollFollow.current.pause();
       }}>
         <div className="journey-message-list" ref={messageContent}>
-        {!doctor.builder && hasVoiceConversation && <TangChatGuidance disabled={interactionLocked} onSend={async (text) => Boolean(await send(text))} />}
+        {usesTangRecords(doctor) && hasVoiceConversation && <TangChatGuidance disabled={interactionLocked} onSend={async (text) => Boolean(await send(text))} />}
         <details className="journey-quick-questions"><summary>推荐问题</summary><div className="journey-suggestions">
-          {doctor.quickQuestions.slice(0, 3).map((question) => <button key={question} onClick={() => send(question)} disabled={interactionLocked}>{question}</button>)}
+          {doctor.quickQuestions.slice(0, usesTangRecords(doctor) ? 3 : 5).map((question) => <button key={question} onClick={() => send(question)} disabled={interactionLocked}>{question}</button>)}
         </div></details>
         {messages.map((message) => (
           <motion.div className={`journey-bubble-row ${message.role} ${message.error ? "is-error" : ""}`} key={message.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}>
@@ -1650,17 +1652,17 @@ function AskPanel({
             <div className="journey-bubble-content">
               {message.role === "assistant" && !message.error && <CrisisHelpCard safety={message} reply={message.text} />}
               {!(message.role === "assistant" && !message.error && message.crisis && message.crisisCategory === "uncertain") && <div className="journey-message-text">{message.role === "user" && message.inputMode === "voice" ? <><span className="tang-voice-message"><WaveSineIcon size={22} /> 语音消息{message.voiceDurationSeconds ? (" · " + message.voiceDurationSeconds + " 秒") : ""}</span><details><summary>查看识别内容</summary>{formatMedicalText(message.text)}</details></> : formatMedicalText(chatMessageBody(message))}</div>}
-              {message.role === "assistant" && !message.error && !message.crisis && <MessageCitations tang={doctor.slug === "tang-jinsong"} hideEmpty={doctor.slug === "tang-jinsong"} enabled={doctor.citationsEnabled !== false} message={message} showDisclaimer={message.id !== greeting.id} />}
+              {message.role === "assistant" && !message.error && !message.crisis && <MessageCitations tang={doctor.slug === "tang-jinsong"} hideEmpty={usesUnifiedTemplate(doctor)} enabled={doctor.citationsEnabled !== false} message={message} showDisclaimer={message.id !== greeting.id} />}
               {message.role === "assistant" && !message.error && message.id !== greeting.id && <AnswerFeedback doctorSlug={doctor.slug} messageId={message.id} answer={message.text} question={messages.slice(0,messages.indexOf(message)).reverse().find(item=>item.role==="user")?.text||""}/> }
               {message.role === "assistant" && !message.error && !message.crisis && !message.crisisCategory && message.id !== greeting.id && <div className="tang-reply-videos">{matchDoctorVideos(messages.slice(0, messages.indexOf(message)).reverse().find(item => item.role === "user")?.text, doctorCustoms[doctor.slug]?.videos).map((video: { title: string; url: string; platform: string }) => <a key={video.url} href={video.url} target="_blank" rel="noopener noreferrer">{doctor.name}医生的科普视频：{video.title}<small>{video.platform}</small></a>)}</div>}
-              {doctor.slug === "tang-jinsong" && message.role === "assistant" && !message.error && <div className="tang-reply-footer"><span>{message.crisis ? "安全提示，不是医生本人回复" : message.text.startsWith(DEMO_PREFIX) ? "演示内容，未接模型，仅供演示" : "内容由大模型生成，仅供健康科普参考"}</span><button onClick={() => copyMessage(message)}>{copiedId === message.id ? "已复制" : "复制"}</button></div>}
+              {usesUnifiedTemplate(doctor) && message.role === "assistant" && !message.error && <div className="tang-reply-footer"><span>{message.crisis ? "安全提示，不是医生本人回复" : message.text.startsWith(DEMO_PREFIX) ? "演示内容，未接模型，仅供演示" : "内容由大模型生成，仅供健康科普参考"}</span><button onClick={() => copyMessage(message)}>{copiedId === message.id ? "已复制" : "复制"}</button></div>}
               <div className="journey-message-actions">
                 {message.role === "assistant" && !message.error && !templatePreview && (!doctor.builder || voiceEnabled(doctor)) && <button onClick={() => void readMessage(message)} aria-label={playingMessageId === message.id ? "停止朗读" : "朗读回复"} disabled={interactionLocked}>{playingMessageId === message.id ? <StopIcon size={14} /> : <SpeakerHighIcon size={14} />}</button>}
                 {message.role === "assistant" && !message.error && <button className={favorites.some((item) => item.id === message.id) ? "is-active" : ""} onClick={() => toggleFavorite(message)} aria-label="收藏回复"><BookmarkSimpleIcon size={14} weight={favorites.some((item) => item.id === message.id) ? "fill" : "regular"} /></button>}
-                {(doctor.slug !== "tang-jinsong" || message.role !== "assistant" || message.error) && <button onClick={() => copyMessage(message)} aria-label="复制内容"><CopyIcon size={14} />{copiedId === message.id && <span>已复制</span>}</button>}
+                {(!usesUnifiedTemplate(doctor) || message.role !== "assistant" || message.error) && <button onClick={() => copyMessage(message)} aria-label="复制内容"><CopyIcon size={14} />{copiedId === message.id && <span>已复制</span>}</button>}
                 {message.error && message.retryText && <button className="retry" disabled={interactionLocked} onClick={() => void send(message.retryText, message.inputMode === "voice", message.id)}><ArrowClockwiseIcon size={14} />重试</button>}
               </div>
-              {doctor.slug === "tang-jinsong" && message.role === "assistant" && !message.error && (message.crisis
+              {usesUnifiedTemplate(doctor) && message.role === "assistant" && !message.error && (message.crisis
                 ? <div className="tang-reply-human">紧急情况请直接拨打 120 或前往急诊，不要等待线上回复。</div>
                 : <div className="tang-reply-follow">{doctor.quickQuestions.slice(0, 3).map(question => <button key={question} disabled={interactionLocked} onClick={() => void send(question)}>{question}</button>)}</div>)}
             </div>
@@ -1697,7 +1699,7 @@ function AskPanel({
           {voiceStatus === "recording" ? <PaperPlaneTiltIcon size={20} weight="fill" /> : <MicrophoneIcon size={20} />}
           {voiceStatus === "recording" ? "说完了，发送" : voiceStatus === "starting" ? "正在开启麦克风…" : voiceStatus === "transcribing" || busy ? "请稍候…" : "点击说话"}
         </button> : <>
-          <input value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => event.key === "Enter" && !event.nativeEvent.isComposing && void send()} placeholder={hasVoiceConversation ? "聊聊最近的睡眠、情绪或困扰…" : "描述你的健康问题…"} aria-label="对话内容" maxLength={2000} disabled={hasVoiceConversation ? voiceCapturing : interactionLocked} />
+          <input value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => event.key === "Enter" && !event.nativeEvent.isComposing && void send()} placeholder={usesTangRecords(doctor) && hasVoiceConversation ? "聊聊最近的睡眠、情绪或困扰…" : "描述你的健康问题…"} aria-label="对话内容" maxLength={2000} disabled={hasVoiceConversation ? voiceCapturing : interactionLocked} />
           <button className="send" onClick={() => void send()} aria-label="发送" disabled={templatePreview || interactionLocked || !input.trim()}><PaperPlaneTiltIcon size={18} weight="fill" /></button>
         </>}
       </div>
@@ -2121,12 +2123,8 @@ function TangPreparation({ doctor, onAsk, onManage, onDirtyChange }: { doctor: P
   const service = doctor.services.find(item => /就诊.*准备|就诊.*资料/.test(item)) || "就诊资料准备";
   const plan = normalizeServicePlans(stored).plans.find(item => item.service === service);
   const [records] = useDoctorLocalState<DoctorHealthRecord[]>(doctor.slug, "health-records", []);
-  const [copied, setCopied] = useState(false);
-  const [medication] = useTangLocal<{ date: string; status: string; note?: string }[]>(MEDICATION_SECTION, []);
-  const [smoking] = useTangLocal<{ startDate?: string; days: Record<string, { cigarettes?: number; urges?: number }> }>(SMOKING_SECTION, { days: {} });
-  const visitSummary = usesTangRecords(doctor) ? buildVisitSummary(records, { today: localDateKey(), questions: plan?.note || "", extraLines: buildMedicationLines(medication, smoking, { today: localDateKey() }) }) : null;
   return <>
-    {usesTangRecords(doctor) && (doctor.slug === "tang-jinsong" ? <TangVisitSummary records={records} questions={plan?.note || ""} /> : <section className="tang-visit-summary" aria-label="复诊摘要">{visitSummary ? <><pre>{visitSummary}</pre><div><button type="button" onClick={async () => { try { await navigator.clipboard.writeText(visitSummary); setCopied(true); } catch { setCopied(false); } }}>{copied ? "已复制" : "复制"}</button><button type="button" onClick={() => window.print()}>打印</button></div></> : <><h3>复诊摘要</h3><p>还没有近 30 天的记录。先填写睡眠日记，这里会自动整理成一页。</p></>}</section>)}
+    {usesTangRecords(doctor) ? <TangVisitSummary records={records} questions={plan?.note || ""} /> : usesUnifiedTemplate(doctor) && <SpecialtyVisitSummary records={records} questions={plan?.note || ""} fields={getSpecialtyRecordConfig(doctor.slug).fields} />}
     <ServicePlanWorksheet doctor={doctor} service={service} planId={plan?.id || service} stored={stored} setStored={setStored} persistence={persistence} onDirtyChange={onDirtyChange} onManage={onManage} onAsk={onAsk} />
   </>;
 }
@@ -2159,7 +2157,7 @@ function ServicesPanel({ doctor, experience, onAsk, onManage, compact = false, o
       {plans.filter(plan => !(doctor.builder ? doctor.builder.servicePlans.map(item => item.title) : doctor.services).includes(plan.service) || plans.find(item => item.service === plan.service)?.id !== plan.id).map(plan => <button className="journey-secondary-button" key={plan.id} onClick={() => setSelected({ id: plan.id, service: plan.service })}>查看已保存计划：{plan.service}</button>)}
       {!compact && componentEnabled(doctor, "content") && <PublishedContentSection content={doctor.content.filter((item) => item.type === "service")} title="已发布服务" onAsk={onAsk} />}
       </>}
-      {!compact && <section className="journey-boundary"><ShieldCheckIcon size={23} weight="duotone" /><div>{doctor.slug !== "tang-jinsong" && <b>{experience.tagline}</b>}<p>线上内容用于健康教育和就医准备，不提供诊断、处方或急救服务。{customGrid && doctor.slug === "tang-jinsong" && <><br />紧急情况请拨打 <a href="tel:120">120</a>，心理援助热线 <a href="tel:12356">12356</a>。</>}</p></div></section>}
+      {!compact && <section className="journey-boundary"><ShieldCheckIcon size={23} weight="duotone" /><div>{doctor.slug !== "tang-jinsong" && <b>{experience.tagline}</b>}<p>线上内容用于健康教育和就医准备，不提供诊断、处方或急救服务。{customGrid && usesUnifiedTemplate(doctor) && <><br />紧急情况请拨打 <a href="tel:120">120</a>，心理援助热线 <a href="tel:12356">12356</a>。</>}</p></div></section>}
       <AnimatePresence>
         {selected && <FeatureSheet title={selected.service} eyebrow="PROFESSIONAL SERVICE" onClose={closeService}>
           <ServicePlanWorksheet key={selected.id} doctor={doctor} service={selected.service} planId={selected.id} stored={stored} setStored={setStored} persistence={servicePersistence} onDirtyChange={setSelectedDirty} onManage={() => { if (canLeave()) { setSelected(null); onManage(); } }} onAsk={question => { if (canLeave()) { setSelected(null); onAsk(question); } }} />
@@ -2218,7 +2216,7 @@ function MePanel({ doctor, experience, onAsk, onWellnessOpen, onManage }: { doct
   };
 
   const changeSaveChat = (saveChat: boolean) => {
-    if (!saveChat && messages.length > 0 && !window.confirm(account.user ? "关闭后将清除账户中保存的对话与心理自评，其他设备也会同步此设置。确定继续吗？" : "关闭后将立即清除本机对话记录，确定继续吗？")) return;
+    if (!saveChat && messages.length > 0 && !window.confirm(account.user ? (usesTangRecords(doctor) ? "关闭后将清除账户中保存的对话与心理自评，其他设备也会同步此设置。确定继续吗？" : "关闭后将清除账户中保存的对话，其他设备也会同步此设置。确定继续吗？") : "关闭后将立即清除本机对话记录，确定继续吗？")) return;
     if (!saveChat) {
       setMessages([]);
       if (doctor.slug === "tang-jinsong") {
@@ -2291,8 +2289,8 @@ function MePanel({ doctor, experience, onAsk, onWellnessOpen, onManage }: { doct
 
         {activePanel === "privacy" && <FeatureSheet title="隐私与设置" eyebrow="PRIVACY SETTINGS" onClose={closePanel}>
           <div className="journey-settings-list">
-            <label><div><b>保存对话记录</b><p>{account.user ? "将对话与心理自评保存在账户中，关闭时清除对应云端记录。" : doctor.slug === "tang-jinsong" ? "将对话与心理自评保存在当前设备；关闭时清除本机副本。" : "将对话历史保存在当前设备；关闭时会立即清除本机副本。"}</p></div><input type="checkbox" disabled={templatePreview} checked={privacy.saveChat} onChange={(event) => changeSaveChat(event.target.checked)} /></label>
-            <label><div><b>自动语音播报</b><p>{doctor.slug === "tang-jinsong" ? "文字或语音提问后自动播放科普回复。" : "语音提问后自动播放科普回复。"}</p></div><input type="checkbox" checked={privacy.voicePlayback} onChange={(event) => setPrivacy((current) => ({ ...current, voicePlayback: event.target.checked }))} /></label>
+            <label><div><b>保存对话记录</b><p>{account.user ? (usesTangRecords(doctor) ? "将对话与心理自评保存在账户中，关闭时清除对应云端记录。" : "将对话历史保存在账户中，关闭时清除对应云端记录。") : doctor.slug === "tang-jinsong" ? "将对话与心理自评保存在当前设备；关闭时清除本机副本。" : "将对话历史保存在当前设备；关闭时会立即清除本机副本。"}</p></div><input type="checkbox" disabled={templatePreview} checked={privacy.saveChat} onChange={(event) => changeSaveChat(event.target.checked)} /></label>
+            <label><div><b>自动语音播报</b><p>{usesUnifiedTemplate(doctor) ? "文字或语音提问后自动播放科普回复。" : "语音提问后自动播放科普回复。"}</p></div><input type="checkbox" checked={privacy.voicePlayback} onChange={(event) => setPrivacy((current) => ({ ...current, voicePlayback: event.target.checked }))} /></label>
             <label><div><b>健康提醒</b><p>显示首页健康记录提醒。</p></div><input type="checkbox" checked={privacy.reminders} onChange={(event) => setPrivacy((current) => ({ ...current, reminders: event.target.checked }))} /></label>
           </div>
           {!account.user && <button className="journey-danger-button" disabled={templatePreview} onClick={startNewGuest}><TrashIcon size={16} /> 清除数据并开始新游客体验</button>}
@@ -2427,11 +2425,14 @@ function DoctorAppBody() {
   };
   const openTang = (action: string) => {
     if (action === "病友信息") { switchTab("me"); return; }
-    if (action === "睡眠日记") { switchTab("manage"); return; }
+    if (action === "睡眠日记" || action === "症状记录") { switchTab("manage"); return; }
     setTangPanel(action);
   };
-  const tang = doctor.slug === "tang-jinsong";
+  const tang = usesTangRecords(doctor);
+  const unified = usesUnifiedTemplate(doctor);
   const custom = doctorCustoms[doctor.slug];
+  const educationEmpty = unified && !tang && !doctor.articles.length && !custom?.videos.length
+    && !doctor.content.some(item => item.type === "article" || item.type === "faq");
   const availableNavigation = configuredNavigation(doctor, navItems);
   const visibleTab = availableNavigation.some(item => item.id === tab) ? tab : (availableNavigation[0]?.id || "me");
   const themeStyle = {
@@ -2446,7 +2447,7 @@ function DoctorAppBody() {
   } as CSSProperties;
 
   const app = (
-    <main className={`journey-stage ${builderLayoutClass(doctor)}${doctor.slug === "tang-jinsong" ? " is-tang-agent" : ""}${doctorExperiences[doctor.slug] ? "" : " is-generic-agent"}${visibleTab === "ask" ? " is-chat-active" : ""}${visibleTab === "ask" && chatViewport.keyboardOpen ? " is-keyboard-open" : ""}`} style={themeStyle}>
+    <main className={`journey-stage ${builderLayoutClass(doctor)}${usesUnifiedTemplate(doctor) ? " is-tang-agent" : ""}${doctorExperiences[doctor.slug] ? "" : " is-generic-agent"}${visibleTab === "ask" ? " is-chat-active" : ""}${visibleTab === "ask" && chatViewport.keyboardOpen ? " is-keyboard-open" : ""}`} style={themeStyle}>
       <div className={preview ? "journey-phone is-preview" : "journey-phone"}>
         {!preview && <Link className="journey-back" to="/"><ArrowLeftIcon size={16} /> 智能体矩阵</Link>}
         {preview && <div className="journey-preview-banner" role="status"><Link className="journey-preview-return" to="/admin"><ArrowLeftIcon size={14} /> 返回后台</Link><b>{templatePreview ? "模板预览 · 尚未创建智能体" : "草稿预览 · 尚未发布"}</b><span>{templatePreview ? "仅展示完整界面；创建草稿后才能保存、问答或使用语音。" : "使用后台当前草稿；体验数据独立保存在本机，不同步消费者账户。账号操作已停用。"}</span></div>}
@@ -2460,22 +2461,22 @@ function DoctorAppBody() {
               exit={reduced ? undefined : { opacity: 0, x: -6 }}
               transition={{ duration: reduced ? 0 : 0.2 }}
             >
-              {visibleTab === "home" && <HomePanel doctor={doctor} experience={experience} onAsk={goAsk} onPrepare={tang ? () => setTangPanel("就诊准备") : undefined} onWellnessOpen={openWellness} onManage={() => switchTab("manage")} onExpert={custom ? () => setTangPanel("专家介绍") : undefined} />}
+              {visibleTab === "home" && <HomePanel doctor={doctor} experience={experience} onAsk={goAsk} onPrepare={unified ? () => setTangPanel("就诊准备") : undefined} onWellnessOpen={openWellness} onManage={() => switchTab("manage")} onExpert={custom ? () => setTangPanel("专家介绍") : undefined} />}
               {visibleTab === "ask" && <AskPanel key={doctor.slug} doctor={doctor} experience={experience} initialQuestion={initialQuestion} initialShareHealthRecords={initialShareHealthRecords} initialAutoSend={initialAutoSend} onConsumeInitialQuestion={() => { setInitialQuestion(""); setInitialShareHealthRecords(false); }} />}
-              {visibleTab === "manage" && (usesWellness(doctor) && !doctor.builder ? <WellnessWorkspace section="manage" view={wellnessView} onView={setWellnessView} onAsk={goAsk} /> : <ManagePanel doctor={doctor} experience={experience} onAsk={goAsk} onPrepare={tang ? () => setTangPanel("就诊准备") : undefined} wellnessView={wellnessView} onWellnessView={setWellnessView} />)}
+              {visibleTab === "manage" && (usesWellness(doctor) && !doctor.builder ? <WellnessWorkspace section="manage" view={wellnessView} onView={setWellnessView} onAsk={goAsk} /> : <ManagePanel doctor={doctor} experience={experience} onAsk={goAsk} onPrepare={unified ? () => setTangPanel("就诊准备") : undefined} wellnessView={wellnessView} onWellnessView={setWellnessView} />)}
               {visibleTab === "services" && (usesWellness(doctor) ? <WellnessWorkspace section="services" view={wellnessView} onView={setWellnessView} onAsk={goAsk} servicePlans={componentEnabled(doctor, "services") && <ServicesPanel compact doctor={doctor} experience={experience} onAsk={goAsk} onManage={() => openWellness('diary')} />} /> : <ServicesPanel doctor={doctor} experience={experience} onAsk={goAsk} onManage={() => switchTab("manage")} onTangAction={custom ? openTang : undefined} />)}
               {visibleTab === "me" && <MePanel doctor={doctor} experience={experience} onAsk={goAsk} onWellnessOpen={openWellness} onManage={() => switchTab("manage")} />}
             </motion.div>
           </AnimatePresence>
         </div>
         {<nav className="journey-nav" aria-label="医生智能体主导航">
-          {availableNavigation.filter((item) => !(tang && item.id === "manage")).map((item) => {
+          {availableNavigation.filter((item) => !(unified && item.id === "manage")).map((item) => {
             const NavIcon = item.icon;
-            const active = visibleTab === item.id || (tang && visibleTab === "manage" && item.id === "services");
+            const active = visibleTab === item.id || (unified && visibleTab === "manage" && item.id === "services");
             return (
               <button className={active ? "is-active" : ""} onClick={() => switchTab(item.id)} key={item.id} aria-current={active ? "page" : undefined}>
                 <span><NavIcon size={22} weight={active ? "fill" : "regular"} /></span>
-                <em>{item.id === "ask" && tang ? "健康问答" : item.id === "ask" && !doctor.builder && !doctorExperiences[doctor.slug] ? "问智能体" : item.label}</em>
+                <em>{item.id === "ask" && unified ? "健康问答" : item.id === "ask" && !doctor.builder && !doctorExperiences[doctor.slug] ? "问智能体" : item.label}</em>
               </button>
             );
           })}
@@ -2483,20 +2484,21 @@ function DoctorAppBody() {
         {custom && tangPanel && <FeatureSheet title={tangPanel === "专家介绍" && custom.bio ? `${doctor.name}专家介绍` : tangPanel} eyebrow="" onClose={closeTangPanel}>
           {tangPanel === "专家介绍" ? custom.bio ? <div className="tang-expert-sheet"><TangDoctorBio bio={custom.bio} pendingSections={custom.expertSections} onClose={closeTangPanel} /></div> : <div className="tang-expert-sheet"><p>{doctor.hospital}</p><p>{doctor.department} · {doctor.title}</p><h3>专业擅长</h3><p>{doctor.specialty}</p>{custom.expertSections.map(section => <section key={section.title}><h3>{section.title}</h3><p>{section.body}</p></section>)}</div>
             : tang && (tangPanel === "量表自评" || tangPanel === "今日心境") ? <TangChatGuidance key={tangPanel} embedded onOpenClinic={() => setTangPanel("门诊指引")} startWithScales={tangPanel === "量表自评"} disabled={templatePreview} onSend={async text => { setTangPanel(null); goAsk(text, false, true); return true; }} />
-            : tangPanel === "科普宣教" || tangPanel === "健康宣教" ? tang ? <TangEducationPanel videos={custom.videos}><><PublishedContentSection content={doctor.content.filter(item => item.type === "article" || item.type === "faq")} onAsk={question => { setTangPanel(null); goAsk(question); }} title={tangPanel} /><div className="tang-svc tang-svc-edu">{doctor.articles.map(article => <button type="button" className="tang-svc-box" key={article.id} onClick={() => { setTangPanel(null); goAsk(article.title, false, true); }}><b>{article.title}</b><small>{article.summary}</small></button>)}</div></></TangEducationPanel> : <><PublishedContentSection content={doctor.content.filter(item => item.type === "article" || item.type === "faq")} onAsk={question => { setTangPanel(null); goAsk(question); }} title={tangPanel} /><div className="tang-svc tang-svc-edu">{doctor.articles.map(article => <button type="button" className="tang-svc-box" key={article.id} onClick={() => { setTangPanel(null); goAsk(article.title, false, true); }}><b>{article.title}</b><small>{article.summary}</small></button>)}</div></>
+            : tangPanel === "科普宣教" || tangPanel === "健康宣教" ? educationEmpty ? <p className="tang-svc-note">内容待医生提供</p> : unified ? <TangEducationPanel videos={custom.videos}><><PublishedContentSection content={doctor.content.filter(item => item.type === "article" || item.type === "faq")} onAsk={question => { setTangPanel(null); goAsk(question); }} title={tangPanel} /><div className="tang-svc tang-svc-edu">{doctor.articles.map(article => custom.articleDetails?.[article.id] ? <EducationArticle key={article.id} article={article} detail={custom.articleDetails[article.id]} onAsk={question => { setTangPanel(null); goAsk(question, false, true); }} /> : <button type="button" className="tang-svc-box" key={article.id} onClick={() => { setTangPanel(null); goAsk(article.title, false, true); }}><b>{article.title}</b><small>{article.summary}</small></button>)}</div></></TangEducationPanel> : <><PublishedContentSection content={doctor.content.filter(item => item.type === "article" || item.type === "faq")} onAsk={question => { setTangPanel(null); goAsk(question); }} title={tangPanel} /><div className="tang-svc tang-svc-edu">{doctor.articles.map(article => <button type="button" className="tang-svc-box" key={article.id} onClick={() => { setTangPanel(null); goAsk(article.title, false, true); }}><b>{article.title}</b><small>{article.summary}</small></button>)}</div></>
+            : tangPanel === "资料库" ? <DoctorMaterials materials={custom.materials || []} />
             : tangPanel === "就诊准备" ? <TangPreparation doctor={doctor} onDirtyChange={setTangPanelDirty} onAsk={question => { if (closeTangPanel()) goAsk(question); }} onManage={() => { if (closeTangPanel()) switchTab("manage"); }} />
             : tang && tangPanel === "放松训练" ? <TangRelaxPanel />
             : tang && tangPanel === "用药记录" ? <TangMedicationPanel />
             : tang && tangPanel === "戒烟管理" ? <TangSmokingPanel />
             : tang && tangPanel === "家属照护" ? <TangFamilyPanel onAsk={question => { if (closeTangPanel()) goAsk(question); }} />
-            : tang && tangPanel === "门诊指引" && custom.bio ? <TangClinicPanel bio={custom.bio} onPrepare={() => setTangPanel("就诊准备")} />
-            : tang && tangPanel === "留言咨询" ? <TangMessage doctor={doctor} onPrepare={() => setTangPanel("就诊准备")} />
-            : tang && tangPanel === "更多服务" ? <TangMorePanel onOpen={setTangPanel} onMe={() => { if (closeTangPanel()) switchTab("me"); }} />
+            : unified && tangPanel === "门诊指引" && custom.bio ? <TangClinicPanel bio={custom.bio} onPrepare={() => setTangPanel("就诊准备")} />
+            : unified && tangPanel === "留言咨询" ? <TangMessage doctor={doctor} onPrepare={() => setTangPanel("就诊准备")} />
+            : unified && tangPanel === "更多服务" ? <TangMorePanel custom={tang ? undefined : custom} onOpen={tang ? setTangPanel : openTang} onMe={() => { if (closeTangPanel()) switchTab("me"); }} />
             : <p>正在筹备中，暂未开放。</p>}
         </FeatureSheet>}
       </div>
     </main>
   );
   const content = usesWellness(doctor) ? <WellnessProvider doctorSlug={doctor.slug} doctorName={doctor.name}>{app}</WellnessProvider> : app;
-  return custom ? <TangConsent isTang={tang} lines={noticeLines} key={tabStorageKey} storageKey={doctorStorageKey(preview ? previewStorageSlug(doctor.slug) : doctor.slug, "ai-consent-v02")}>{content}</TangConsent> : content;
+  return custom ? <TangConsent isTang={unified} lines={noticeLines} key={tabStorageKey} storageKey={doctorStorageKey(preview ? previewStorageSlug(doctor.slug) : doctor.slug, "ai-consent-v02")}>{content}</TangConsent> : content;
 }

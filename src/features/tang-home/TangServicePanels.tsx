@@ -3,9 +3,10 @@ import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 
 import { localDateKey, useDoctorLocalState } from "../../hooks/useDoctorLocalState";
 import { noticeLines, type DoctorBio, type DoctorVideo } from "../services/doctorCustom";
 import { sources, type SourceKey } from "./sources";
+import type { ArticleDetail } from "../services/chenEducation";
 import { useUiPrivacy } from "./useUiPrivacy";
 import { normalizeTangResults, TANG_ASSESSMENT_SECTION, TANG_RESULT_SCALES, type TangAssessmentResult } from "../tang/guidanceModel";
-import { buildMedicationLines, buildTangExtraLines, buildVisitSummary } from "../services/visitSummary.mjs";
+import { buildMedicationLines, buildTangExtraLines, buildFieldVisitSummary, buildVisitSummary } from "../services/visitSummary.mjs";
 import { ClinicTimes } from "./TangDoctorBio";
 import { buildHealthTrend } from "../../lib/healthRecords";
 import type { DoctorHealthRecord } from "../../hooks/useDoctorLocalState";
@@ -80,6 +81,24 @@ export function TangVisitSummary({ records, questions }: { records: DoctorHealth
   return <section className="tang-visit-summary" aria-label="复诊摘要">{summary ? <><TangVisitTrends records={records} />
     <pre>{summary}</pre><div><button type="button" onClick={async () => { try { await navigator.clipboard.writeText(summary); setCopied(true); } catch { setCopied(false); } }}>{copied ? "已复制" : "复制"}</button><button type="button" onClick={() => window.print()}>打印</button></div>
   </> : <><h3>复诊摘要</h3><p>还没有近 30 天的记录。填写睡眠日记、用药、戒烟或量表后，这里会自动整理成一页。</p></>}</section>;
+}
+
+export function SpecialtyVisitSummary({ records, questions, fields }: { records: DoctorHealthRecord[]; questions: string; fields: { key: string; label: string; unit: string }[] }) {
+  const [copied, setCopied] = useState(false);
+  const summary = buildFieldVisitSummary(records, { today: localDateKey(), fields, questions });
+  return <section className="tang-visit-summary" aria-label="复诊摘要">{summary ? <>
+    <pre>{summary}</pre><div><button type="button" onClick={async () => { try { await navigator.clipboard.writeText(summary); setCopied(true); } catch { setCopied(false); } }}>{copied ? "已复制" : "复制"}</button><button type="button" onClick={() => window.print()}>打印</button></div>
+  </> : <><h3>复诊摘要</h3><p>还没有近 30 天的记录。填写症状记录后，这里会自动整理成一页。</p></>}</section>;
+}
+
+// 有正文的科普点开就地看，看完可以继续问；没有正文的仍然直接进问答。
+export function EducationArticle({ article, detail, onAsk }: { article: { title: string; summary: string }; detail: ArticleDetail; onAsk: (question: string) => void }) {
+  return <details className="tang-svc-box tang-article">
+    <summary><b>{article.title}</b><small>{article.summary}</small></summary>
+    {detail.body.map(text => <p key={text}>{text}</p>)}
+    <small className="tang-article-source">依据：{detail.source}。用于健康科普，不是治疗方案。</small>
+    <div className="tang-svc-actions"><button type="button" className="tang-svc-btn" onClick={() => onAsk(article.title)}>继续问问</button></div>
+  </details>;
 }
 
 export function TangVisitTrends({ records }: { records: DoctorHealthRecord[] }) {
@@ -229,7 +248,7 @@ export function TangClinicPanel({ bio, onPrepare }: { bio: DoctorBio; onPrepare:
       return <section className="tang-svc-box tang-clinic-card" key={campus} aria-label={campus}>
         <header className="tang-clinic-cover">{image ? <><img src={image} alt={campus} /><h3>{campus}</h3></> : <><h3><MapPinIcon size={24} aria-hidden="true" />{campus}</h3><small className="tang-clinic-placeholder">院区图待提供</small></>}</header>
         <div className="tang-clinic-body"><h4>门诊时间</h4><div className="tang-svc-clinic">{times.length ? <ClinicTimes times={times} /> : <p className="tang-svc-note">门诊时间待确认</p>}</div>
-        {departments.length > 0 && <><h4>挂号科室</h4><ul>{departments.map(item => <li key={item.department}>{item.department}</li>)}</ul></>}</div>
+        {departments.length > 0 && <><h4>挂号科室</h4><ul>{departments.map(item => <li key={item.department}>{item.hospital && `${item.hospital} / `}{item.department}</li>)}</ul></>}</div>
       </section>;
     })}
     <div className="tang-svc-actions"><button type="button" className="tang-svc-btn is-primary" onClick={onPrepare}>去做就诊准备</button></div>
@@ -250,15 +269,17 @@ export function TangMessagePanel({ onSubmit, onPrepare }: { onSubmit: (text: str
   </div>;
 }
 
-export function TangMorePanel({ onOpen, onMe }: { onOpen: (panel: string) => void; onMe: () => void }) {
+export function TangMorePanel({ onOpen, onMe, custom }: { custom?: import("../services/doctorCustom").DoctorCustom; onOpen: (panel: string) => void; onMe: () => void }) {
   const [showNotice, setShowNotice] = useState(false);
   const Row = ({ label, onClick }: { label: string; onClick: () => void }) => <button type="button" onClick={onClick}>{label}<CaretRightIcon size={16} /></button>;
   return <div className="tang-svc">
     <div className="tang-svc-more">
+      {custom ? custom.featureGroups.flatMap(group => group.items).filter(item => item !== "更多服务" && !custom.off.includes(item)).map(item => <Row key={item} label={item} onClick={() => onOpen(item)} />) : <>
       <Row label="专家介绍" onClick={() => onOpen("专家介绍")} />
       <Row label="复诊摘要" onClick={() => onOpen("就诊准备")} />
       <Row label="隐私与设置" onClick={onMe} />
       <Row label="使用说明" onClick={() => setShowNotice(value => !value)} />
+      </>}
     </div>
     {showNotice && <section className="tang-svc-box"><ul>{noticeLines.map(line => <li key={line}>{line}</li>)}</ul></section>}
   </div>;

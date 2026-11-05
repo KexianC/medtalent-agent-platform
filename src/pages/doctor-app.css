@@ -3391,3 +3391,11 @@
 .tang-home-videos > a svg { flex: none; color: var(--journey-accent-strong); }
 .tang-home-videos b { display: block; font-size: 14px; }
 .tang-home-videos small { display: block; margin-top: 3px; font-size: 12px; opacity: .7; }
+
+.tang-article { background: #fff; }
+.tang-article summary { display: flex; flex-direction: column; gap: 4px; cursor: pointer; list-style: none; }
+.tang-article summary::-webkit-details-marker { display: none; }
+.tang-article[open] summary { margin-bottom: 10px; }
+.tang-article p { margin: 0 0 8px; font-size: 14px; line-height: 1.65; }
+.tang-article p + p { margin-top: 10px !important; }
+.tang-article-source { display: block; margin-top: 4px; font-size: 12px; line-height: 1.5; opacity: .75; }
