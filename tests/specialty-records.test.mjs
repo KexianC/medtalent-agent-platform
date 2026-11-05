@@ -28,7 +28,7 @@ const record = (dateKey, measurements, extra = {}) => ({
 test('all nine specialty configurations expose relevant fields without inventing measurements', () => {
   const expected = {
     'fu-junfen': ['fastingGlucose', 'postMealGlucose', 'heightCm', 'weightKg'],
-    'chen-zhiling': ['nasalBlockageScore', 'tinnitusScore', 'throatDiscomfortScore'],
+    'chen-zhiling': ['nasalBlockageScore', 'tinnitusScore', 'throatDiscomfortScore', 'vertigoAttackCount', 'longestVertigoMinutes', 'earFullnessScore'],
     'gong-wenbo': ['fastingGlucose', 'postMealGlucose', 'weightKg', 'waistCm'],
     'chen-jinbiao': ['weightKg', 'painScore', 'appetiteScore'],
     'wu-yuqin': ['weightKg', 'waistCm', 'activityMinutes', 'sleepHours'],
