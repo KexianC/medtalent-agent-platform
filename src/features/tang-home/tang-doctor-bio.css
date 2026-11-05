@@ -1,0 +1,37 @@
+.tang-card { margin: 14px 16px 0; padding: 16px; border: 1px solid rgba(var(--journey-accent-rgb), .14); border-radius: 22px; background: #fff; color: var(--journey-ink); }
+.tang-card > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.is-tang-agent .tang-card > header h2 { margin: 0; color: var(--journey-ink); font-size: 18px; font-weight: 700; }
+.tang-card > header button { display: inline-flex; align-items: center; gap: 1px; padding: 4px 0 4px 8px; border: 0; background: none; color: var(--journey-accent-strong); font-size: 14px; }
+.tang-card-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 12px; padding: 4px; border-radius: 14px; background: #eef5f1; }
+.tang-card-tabs button { padding: 8px 0; border: 0; border-radius: 11px; background: none; color: #52685d; font-size: 14px; }
+.tang-card-tabs button.is-active { background: #fff; box-shadow: 0 1px 4px rgba(18, 54, 46, .1); color: var(--journey-accent-strong); font-weight: 700; }
+.tang-card-panel { min-height: 164px; padding-top: 12px; }
+.is-tang-agent .tang-card .tang-card-panel p { margin: 0; color: #33504a; font-size: 14px; line-height: 1.65; }
+.tang-card-topics { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.tang-card-topics button { display: inline-flex; align-items: center; gap: 2px; padding: 6px 8px 6px 11px; border: 1px solid rgba(var(--journey-accent-rgb), .28); border-radius: 999px; background: #f5faf7; color: var(--journey-accent-strong); font-size: 13px; }
+.is-tang-agent .tang-card .tang-card-panel small { display: block; margin-top: 8px; color: #6b7f76; font-size: 12px; }
+.tang-card-clinic { display: grid; grid-template-columns: 1fr; gap: 6px; padding: 10px 0; }
+.tang-card-clinic + .tang-card-clinic { border-top: 1px solid #eef2ef; }
+.tang-card-clinic b { font-size: 14px; }
+.tang-clinic-times { display: grid; gap: 6px; margin: 0; text-align: left; }
+.tang-clinic-times > div { display: grid; grid-template-columns: 5em minmax(0, 1fr); gap: 12px; align-items: baseline; }
+.tang-clinic-times dt, .tang-clinic-times dd { margin: 0; color: #3b5c53; font-size: 15px; font-style: normal; }
+.tang-clinic-times dd { padding-left: 12px; border-left: 1px solid #d6e0db; }
+.tang-card-panel ul { margin: 0; padding-left: 18px; list-style: disc; color: #33504a; font-size: 14px; line-height: 1.8; }
+.tang-card button:focus-visible, .tang-bio-confirm:focus-visible { outline: 3px solid #ffb641; outline-offset: 2px; }
+.journey-tang-home .journey-hero-art.is-tang-photo { right: 0; width: 88px; height: 88px; overflow: visible; background: none; box-shadow: none; }
+.journey-tang-home .journey-hero-art.is-tang-photo img { position: static; display: block; width: 88px; height: 88px; padding: 3px; border: 2px solid rgba(var(--journey-accent-rgb), .38); border-radius: 50%; object-fit: cover; object-position: 50% 62%; }
+.journey-tang-home .journey-hero-art.is-tang-photo b { position: absolute; right: -2px; bottom: 2px; padding: 1px 6px; border: 1.5px solid #fff; border-radius: 999px; background: var(--journey-accent-strong); color: #fff; font-size: 11px; line-height: 1.4; }
+.journey-tang-home .journey-doctor-heading:has(.is-tang-photo) .journey-doctor-copy { width: calc(100% - 96px); }
+.tang-bio { color: var(--journey-ink); }
+.tang-bio section { margin-top: 18px; }
+.tang-bio section:first-child { margin-top: 2px; }
+.is-tang-agent .tang-expert-sheet .tang-bio h3 { margin: 0 0 8px; color: var(--journey-ink); font-size: 16px; font-weight: 700; }
+.is-tang-agent .tang-expert-sheet .tang-bio p, .tang-bio li { margin: 0 0 4px; color: #33504a; font-size: 15px; line-height: 1.75; }
+.tang-bio ul { margin: 0; padding-left: 18px; list-style: disc; }
+.is-tang-agent .tang-expert-sheet .tang-bio .is-empty p { display: flex; align-items: center; gap: 4px; color: #8f9c98; font-size: 14px; }
+.tang-bio footer { display: flex; align-items: flex-start; gap: 4px; margin-top: 18px; color: #8f9c98; font-size: 12px; line-height: 1.5; }
+.tang-bio footer svg { flex: none; margin-top: 2px; }
+.tang-bio-confirm { position: sticky; bottom: 0; z-index: 2; display: block; width: 100%; margin-top: 16px; padding: 14px 0; border: 0; border-radius: 26px; background: var(--journey-accent-strong); box-shadow: 0 -10px 18px 6px #fff, 0 44px 0 24px #fff; color: #fff; font-size: 16px; font-weight: 600; }
+.journey-tang-home .journey-doctor-heading:has(.is-tang-photo) + .journey-specialty-tags { flex-wrap: wrap; overflow: visible; }
+.is-tang-agent .tang-expert-sheet .tang-bio p.tang-bio-hint { color: #6b7f76; font-size: 13px; }
