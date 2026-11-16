@@ -1,3 +1,4 @@
+import { resolveDoctorConfig } from "../../doctors/index";
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import type { DoctorProfile } from '../../data/doctorProfiles';
 import type { DoctorPersistenceMeta } from '../../hooks/useDoctorLocalState';
@@ -26,7 +27,7 @@ export default function ServicePlanWorksheet({ doctor, service, planId = service
   const [lastAction, setLastAction] = useState<'save' | 'delete'>('save');
   const savedFingerprint = JSON.stringify(saved || null);
   const remoteChanged = dirty && editBase !== savedFingerprint;
-  const workflow = useMemo(() => { const configured = doctor.builder?.servicePlans.find(item => item.id === planId || item.title === service); return configured ? { description: configured.description || '整理自己的准备进度和待问问题。', steps: configured.steps.map(item => item.title), action: 'prepare' as const, question: '我想了解' + service } : getServiceWorkflow(doctor.slug, service); }, [doctor.slug, doctor.builder, service, planId]);
+  const workflow = useMemo(() => { const configured = doctor.builder?.servicePlans.find(item => item.id === planId || item.title === service); return configured ? { description: configured.description || '整理自己的准备进度和待问问题。', steps: configured.steps.map(item => item.title), action: 'prepare' as const, question: '我想了解' + service } : getServiceWorkflow(doctor, service); }, [doctor, service, planId]);
   const definition = doctor.builder?.servicePlans.find(item => item.id === planId || item.title === service);
   const writable = canWriteBuilderData(doctor, 'services');
   const progress = definition ? serviceProgress(definition,draft) : null;
@@ -77,9 +78,9 @@ export default function ServicePlanWorksheet({ doctor, service, planId = service
     {(notice || status) && <p className="service-plan-notice" role={notice ? 'alert' : 'status'}>{notice || status}</p>}
     {attempted && persistence.status !== 'ready' && <button type="button" className="journey-secondary-button" onClick={persistence.retry}>重试保存或同步</button>}
     {workflow.action === 'record' && <button type="button" className="journey-secondary-button" onClick={onManage}>填写健康记录与查看趋势</button>}
-    {workflow.action === 'assessment' && doctor.slug === 'tang-jinsong' && <button type="button" className="journey-secondary-button" onClick={() => onAsk('我想了解最近的心理状态，请带我做一次非诊断性的自我观察。')}>进入对话中的心理自评</button>}
+    {workflow.action === 'assessment' && resolveDoctorConfig(doctor)?.services.assessmentPrompt && <button type="button" className="journey-secondary-button" onClick={() => onAsk(resolveDoctorConfig(doctor)!.services.assessmentPrompt!)}>进入对话中的心理自评</button>}
     <details className="service-plan-summary"><summary>查看将带入咨询的摘要</summary><pre>{summary}</pre><p>摘要最多1900字；完整备注保留在计划中。</p></details>
     <div className="service-plan-actions"><button type="button" className="journey-secondary-button" onClick={async () => { try { await navigator.clipboard.writeText(summary); setNotice('摘要已复制。'); } catch { setNotice('无法自动复制，请展开摘要后手动选择复制。'); } }}>复制摘要</button><button type="button" className="journey-primary-button" onClick={() => onAsk(summary.replace(/\s*\n\s*/g, '；'))}>带摘要咨询</button></div>
-    <p className="journey-sheet-disclaimer">{doctor.slug === "tang-jinsong" ? '这些内容默认不会发给 AI。点“带摘要咨询”后才放进问答输入框，你确认发送才会提交。' : '只有点击“带摘要咨询”后，内容才会进入问答草稿；确认发送后再提交给 AI。'}{dirty ? '当前修改尚未保存。' : ''}</p>
+    <p className="journey-sheet-disclaimer">{resolveDoctorConfig(doctor)?.services.shareHint ?? '只有点击“带摘要咨询”后，内容才会进入问答草稿；确认发送后再提交给 AI。'}{dirty ? '当前修改尚未保存。' : ''}</p>
   </div>;
 }

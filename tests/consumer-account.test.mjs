@@ -1,3 +1,4 @@
+import { getDoctorConfig, resolveDoctorConfig } from "../src/doctors/index.ts";
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -38,13 +39,14 @@ function fixture() {
     '../../lib/consumerSession': sessionApi,
     '../../hooks/useDoctorLocalState': { getDoctorVisitorId: () => 'isolated-guest' },
     './consumer-account.css': {},
+    '../../doctors/index': { resolveDoctorConfig },
   };
   const module = { exports: {} };
   const context = vm.createContext({ Error, window: { confirm(message) { controls.confirms.push(message); return controls.confirm; } } });
   vm.runInContext(`(function(require, module, exports) { ${source}\n})`, context)(id => {
     assert.ok(id in modules, id); return modules[id];
   }, module, module.exports);
-  const render = (card = false) => { controls.cursor = 0; return module.exports[card ? 'ConsumerAccountCard' : 'ConsumerDataBoundary']({ doctorSlug: 'tang-jinsong', children: 'CORE-CONTENT' }); };
+  const render = (card = false, props = {}) => { controls.cursor = 0; return module.exports[card ? 'ConsumerAccountCard' : 'ConsumerDataBoundary']({ doctorSlug: 'tang-jinsong', children: 'CORE-CONTENT', ...props }); };
   return { controls, render };
 }
 function nodes(node) { return !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children].flat(Infinity).flatMap(nodes)]; }
@@ -115,4 +117,16 @@ test('pending native login leaves an explicit manual confirmation action and avo
   assert.equal(button(card, '正在等待微信登录…').props.disabled, true);
   button(card, '已返回，确认登录').props.onClick(); await tick();
   assert.deepEqual(h.controls.calls, ['refresh']);
+});
+
+test('account card uses backend v2 text and keeps the bundled Chen copy as fallback', () => {
+  const h = fixture();
+  h.controls.session = guest();
+  const bundled = getDoctorConfig('chen-zhiling');
+  const doctorConfig = { ...bundled, records: { ...bundled.records, accountHint: '后台账户说明', assessmentLabel: '后台自评记录' } };
+  assert.ok(text(h.render(true, { doctorSlug: bundled.slug })).includes(bundled.records.accountHint));
+  assert.ok(text(h.render(true, { doctorSlug: bundled.slug, doctorConfig })).includes('后台账户说明'));
+  assert.equal(text(h.render(true, { doctorSlug: bundled.slug, doctorConfig })).includes(bundled.records.accountHint), false);
+  h.controls.snapshot = { ...h.controls.snapshot, status: 'conflict' };
+  assert.ok(text(h.render(true, { doctorSlug: bundled.slug, doctorConfig })).includes('记录冲突（后台自评记录）'));
 });

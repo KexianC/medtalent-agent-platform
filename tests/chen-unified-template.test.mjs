@@ -1,3 +1,4 @@
+import { getDoctorConfig } from "../src/doctors/index.ts";
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -233,7 +234,10 @@ test('chat mood and assessment guidance stays Tang-only while recommended questi
   assert.equal(usesTangRecords(tang), true);
   assert.match(appSource, /\{usesTangRecords\(doctor\) && hasVoiceConversation && <TangChatGuidance/);
   assert.match(appSource, /: tang && \(tangPanel === "量表自评" \|\| tangPanel === "今日心境"\) \? <TangChatGuidance/);
-  assert.match(appSource, /<summary>推荐问题<\/summary>[\s\S]*?doctor\.quickQuestions\.slice\(0, usesTangRecords\(doctor\) \? 3 : 5\)\.map/);
+  assert.match(appSource, /<summary>推荐问题<\/summary>[\s\S]*?\(resolveDoctorConfig\(doctor\)\?\.chat.quickQuestions \?\? doctor.quickQuestions\)\.slice\(0, usesTangRecords\(doctor\) \? 3 : 5\)\.map/);
+  for (const doctor of [chen, tang]) {
+    assert.deepEqual(getDoctorConfig(doctor.slug).chat.quickQuestions, doctor.quickQuestions);
+  }
   // 科普正文转述指南，可以出现“情绪管理”；这里只防精神科模块的文字带过来。
   const { articleDetails, ...chenConfig } = doctorCustoms[chen.slug];
   assert.ok(articleDetails);
@@ -241,8 +245,12 @@ test('chat mood and assessment guidance stays Tang-only while recommended questi
 });
 
 test('Chen account copy and record-deletion confirmation do not inherit psychological assessments', () => {
-  assert.match(accountSource, /doctorSlug === 'chen-zhiling' \? '登录后，对话、收藏、健康记录将保存在你的云端账户。你可在设置中关闭对话保存。' : '登录后，对话、收藏、健康记录和心理自评将保存在你的云端账户/);
-  assert.match(accountSource, /'chat-assessments-v1': doctorSlug === 'chen-zhiling' \? '自评记录' : '心理自评'/);
+  assert.equal(getDoctorConfig(chen.slug).records.accountHint, '登录后，对话、收藏、健康记录将保存在你的云端账户。你可在设置中关闭对话保存。');
+  assert.equal(getDoctorConfig(tang.slug).records.accountHint, undefined);
+  assert.match(accountSource, /resolveDoctorConfig\(\{ slug: doctorSlug, doctorConfig \}\)\?\.records.accountHint \?\? '登录后，对话、收藏、健康记录和心理自评将保存在你的云端账户/);
+  assert.equal(getDoctorConfig(chen.slug).records.assessmentLabel, '自评记录');
+  assert.equal(getDoctorConfig(tang.slug).records.assessmentLabel, undefined);
+  assert.match(accountSource, /'chat-assessments-v1': resolveDoctorConfig\(\{ slug: doctorSlug, doctorConfig \}\)\?\.records.assessmentLabel \?\? '心理自评'/);
   assert.match(appSource, /account\.user \? \(usesTangRecords\(doctor\) \? "关闭后将清除账户中保存的对话与心理自评[^"\n]*" : "关闭后将清除账户中保存的对话，[^"\n]*"\)/);
   assert.match(appSource, /account\.user \? \(usesTangRecords\(doctor\) \? "将对话与心理自评保存在账户中[^"\n]*" : "将对话历史保存在账户中/);
 });

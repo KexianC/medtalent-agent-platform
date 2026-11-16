@@ -1004,6 +1004,7 @@ export class MySQLPlatformDatabase {
       .map((row) => this.agentFromRow(row, published)))).filter(Boolean);
   }
 
+  // builder 和 doctorConfig 随完整 JSON 草稿/发布快照存储，无需新增列。
   async createAgent(record, actor, publish = false) {
     return await this.transaction(async () => {
       if (await this.getAgent(record.slug)) {

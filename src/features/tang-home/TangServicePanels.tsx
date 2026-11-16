@@ -62,20 +62,20 @@ export function TangEducationPanel({ videos, children }: { videos: DoctorVideo[]
   </section>;
 }
 
-export function TangVisitSummary({ records, questions }: { records: DoctorHealthRecord[]; questions: string }) {
+export function TangVisitSummary({ doctorSlug, days = 30, records, questions }: { doctorSlug: string; days?: number; records: DoctorHealthRecord[]; questions: string }) {
   const [copied, setCopied] = useState(false);
   const [medication] = useTangLocal<MedicationEntry[]>(MEDICATION_SECTION, []);
   const [smoking] = useTangLocal<SmokingData>(SMOKING_SECTION, { days: {} });
   const [relaxDays] = useTangLocal<string[]>(RELAX_SECTION, []);
-  const [privacy] = useUiPrivacy("tang-jinsong");
-  const [assessments] = useDoctorLocalState<TangAssessmentResult[]>("tang-jinsong", TANG_ASSESSMENT_SECTION, [], privacy.saveChat);
+  const [privacy] = useUiPrivacy(doctorSlug);
+  const [assessments] = useDoctorLocalState<TangAssessmentResult[]>(doctorSlug, TANG_ASSESSMENT_SECTION, [], privacy.saveChat);
   const today = localDateKey();
   const assessmentNumbers = privacy.saveChat ? normalizeTangResults(assessments).map(result => ({
     title: TANG_RESULT_SCALES.find(scale => scale.id === result.scaleId)!.title,
     score: result.score, maxScore: result.maxScore, date: localDateKey(new Date(result.createdAt)),
   })) : [];
-  const summary = buildVisitSummary(records, { today, questions,
-    extraLines: [...buildMedicationLines(medication, smoking, { today }), ...buildTangExtraLines(relaxDays, assessmentNumbers, { today })],
+  const summary = buildVisitSummary(records, { today, days, questions,
+    extraLines: [...buildMedicationLines(medication, smoking, { today, days }), ...buildTangExtraLines(relaxDays, assessmentNumbers, { today, days })],
     extraTitle: "用药、戒烟、放松与量表（本人自填）：",
   });
   return <section className="tang-visit-summary" aria-label="复诊摘要">{summary ? <><TangVisitTrends records={records} />

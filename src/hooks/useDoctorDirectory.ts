@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { normalizeDoctorConfig } from "../lib/doctorConfig.ts";
 import { DEFAULT_COMPONENTS } from "../lib/agentBuilder.ts";
 import type { DoctorProfile } from "../data/doctorProfiles";
 
@@ -45,24 +46,27 @@ export function parsePublicDoctor(value: unknown): PublicDoctorProfile {
   if (!value || typeof value !== "object") throw new Error("智能体资料格式不正确，请稍后重试。");
   const item = value as Record<string, unknown>;
   if (!stringValue(item.slug) || !stringValue(item.name)) throw new Error("智能体资料不完整，请稍后重试。");
+  const doctorConfig = item.doctorConfig === undefined ? undefined : normalizeDoctorConfig(item.doctorConfig);
+  if (doctorConfig && doctorConfig.slug !== item.slug) throw new Error("医生配置标识必须与智能体标识一致。");
   return {
+    ...(doctorConfig ? { doctorConfig } : {}),
     slug: stringValue(item.slug),
-    name: stringValue(item.name),
-    portrait: safePortraitUrl(item.portrait),
-    portraitPosition: stringValue(item.portraitPosition) || undefined,
+    name: doctorConfig?.profile.name ?? stringValue(item.name),
+    portrait: safePortraitUrl(doctorConfig?.profile.portrait ?? item.portrait),
+    portraitPosition: doctorConfig?.profile.portraitPosition ?? (stringValue(item.portraitPosition) || undefined),
     portraitScale: typeof item.portraitScale === "number" ? item.portraitScale : undefined,
     portraitTranslateY: stringValue(item.portraitTranslateY) || undefined,
     portraitBackground: stringValue(item.portraitBackground) || undefined,
     portraitTransformOrigin: stringValue(item.portraitTransformOrigin) || undefined,
-    hospital: stringValue(item.hospital),
-    department: stringValue(item.department),
-    title: stringValue(item.title),
-    specialty: stringValue(item.specialty),
+    hospital: doctorConfig?.profile.hospital ?? stringValue(item.hospital),
+    department: doctorConfig?.profile.department ?? stringValue(item.department),
+    title: doctorConfig?.profile.title ?? stringValue(item.title),
+    specialty: doctorConfig?.profile.specialty ?? stringValue(item.specialty),
     intro: stringValue(item.intro),
-    accent: stringValue(item.accent) || "#4e988f",
-    accentSoft: stringValue(item.accentSoft) || "#eaf5ef",
-    quickQuestions: stringList(item.quickQuestions),
-    topics: stringList(item.topics),
+    accent: doctorConfig?.theme.accent ?? (stringValue(item.accent) || "#4e988f"),
+    accentSoft: doctorConfig?.theme.accentSoft ?? (stringValue(item.accentSoft) || "#eaf5ef"),
+    quickQuestions: doctorConfig?.home.quickQuestions ?? stringList(item.quickQuestions),
+    topics: doctorConfig?.profile.topics ?? stringList(item.topics),
     services: stringList(item.services),
     articles: Array.isArray(item.articles) ? item.articles.flatMap((article) => {
       if (!article || typeof article !== "object" || typeof article.id !== "string" || typeof article.title !== "string") return [];
@@ -70,7 +74,7 @@ export function parsePublicDoctor(value: unknown): PublicDoctorProfile {
     }) : [],
     citationsEnabled: item.citationsEnabled === undefined ? undefined : item.citationsEnabled === true,
     healthContextEnabled: item.healthContextEnabled === undefined ? undefined : item.healthContextEnabled === true,
-    builder: item.builder as DoctorProfile["builder"],
+    builder: doctorConfig ? undefined : item.builder as DoctorProfile["builder"],
     preview: item.preview === true,
     draftHash: stringValue(item.draftHash) || undefined,
     welcomeMessage: stringValue(item.welcomeMessage) || undefined,

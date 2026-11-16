@@ -5,6 +5,7 @@ import {knowledgeDiagnostics,knowledgeApprovalPreflight,inspectKnowledgeDocument
 import {classifyKnowledgeError} from './knowledge-errors.mjs';
 import {collectReleaseBlobReferences} from './release-blob-references.mjs';
 import { publicCitationReference } from './knowledge-governance.mjs';
+import { normalizeDoctorConfig } from "../src/lib/doctorConfig.ts";
 import { normalizeAgentBuilder } from "../src/lib/agentBuilder.ts";
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -298,6 +299,16 @@ function publicAgentRecord(agent, secrets, admin) {
         : value && typeof value === "object" ? Object.fromEntries(Object.entries(value).map(([key, item]) => [key, scrub(item)])) : value;
       profile.builder = normalizeAgentBuilder(scrub(normalizeAgentBuilder(agent.builder)));
     } catch { /* Invalid legacy extension data is never reflected to clients. */ }
+  }
+  if (agent?.doctorConfig !== undefined) {
+    try {
+      const scrub = value => typeof value === "string" ? safeNasText(value, secrets, 100000)
+        : typeof value === "number" && secrets.includes(String(value)) ? undefined
+        : Array.isArray(value) ? value.map(scrub)
+        : value && typeof value === "object" ? Object.fromEntries(Object.entries(value).map(([key, item]) => [key, scrub(item)])) : value;
+      const doctorConfig = normalizeDoctorConfig(scrub(normalizeDoctorConfig(agent.doctorConfig)));
+      if (doctorConfig.slug === profile.slug) profile.doctorConfig = doctorConfig;
+    } catch { /* 无效或含内部凭据的配置不反射到客户端。 */ }
   }
   profile.healthContextEnabled = agent?.config?.healthContextEnabled !== false && profile.builder?.healthContext !== false;
   profile.citationsEnabled = agent?.config?.requireCitations !== false;

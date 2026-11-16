@@ -1,3 +1,5 @@
+import type { DoctorConfig } from "../../lib/doctorConfig";
+import { resolveDoctorConfig } from "../../doctors/index";
 import { createContext, useCallback, useContext, useMemo, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { useDoctorLocalState, type DoctorPersistenceMeta } from '../../hooks/useDoctorLocalState';
 import { emptyWellnessState, type WellnessState } from './types';
@@ -5,14 +7,14 @@ import { useDoctorTemplatePreview } from '../../hooks/doctorPreview';
 import { normalizeState } from './stateModel';
 
 export const WELLNESS_TEMPLATE_READ_ONLY_NOTICE = "模板为只读预览，请先创建草稿后保存记录或自评结果。";
-type WellnessContextValue = { readOnly: boolean; doctorName: string; state: WellnessState; setState: Dispatch<SetStateAction<WellnessState>>; persistence: DoctorPersistenceMeta };
+type WellnessContextValue = { readOnly: boolean; doctorName: string; doctorSlug: string; exportPrefix: string; state: WellnessState; setState: Dispatch<SetStateAction<WellnessState>>; persistence: DoctorPersistenceMeta };
 const WellnessContext = createContext<WellnessContextValue | null>(null);
-export function WellnessProvider({ children, doctorSlug = 'yu-wen', doctorName = '喻雯' }: { children: ReactNode; doctorSlug?: string; doctorName?: string }) {
+export function WellnessProvider({ children, doctorSlug, doctorName = '智能体', doctorConfig }: { children: ReactNode; doctorSlug: string; doctorName?: string; doctorConfig?: DoctorConfig }) {
   const readOnly = useDoctorTemplatePreview();
   const [stored, setState, persistence] = useDoctorLocalState(doctorSlug, 'wellness-v1', emptyWellnessState());
   const state = useMemo(() => normalizeState(stored), [stored]);
   const updateState = useCallback<Dispatch<SetStateAction<WellnessState>>>(next => { if (readOnly) return; setState(previous => normalizeState(typeof next === 'function' ? next(normalizeState(previous)) : next)); }, [readOnly, setState]);
-  return <WellnessContext.Provider value={{ readOnly, doctorName, state, setState: updateState, persistence }}>{children}</WellnessContext.Provider>;
+  return <WellnessContext.Provider value={{ readOnly, doctorName, doctorSlug, exportPrefix: resolveDoctorConfig({ slug: doctorSlug, doctorConfig })?.records.exportPrefix ?? doctorSlug, state, setState: updateState, persistence }}>{children}</WellnessContext.Provider>;
 }
 export function useWellness() {
   const value = useContext(WellnessContext);
