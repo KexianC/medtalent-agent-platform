@@ -1,3 +1,4 @@
+import { getDoctorConfig } from "../src/doctors/index.ts";
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -38,6 +39,7 @@ function fixture() {
     '../../lib/consumerSession': sessionApi,
     '../../hooks/useDoctorLocalState': { getDoctorVisitorId: () => 'isolated-guest' },
     './consumer-account.css': {},
+    '../../doctors/index': { getDoctorConfig },
   };
   const module = { exports: {} };
   const context = vm.createContext({ Error, window: { confirm(message) { controls.confirms.push(message); return controls.confirm; } } });

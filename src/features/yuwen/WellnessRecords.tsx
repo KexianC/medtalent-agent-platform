@@ -102,7 +102,7 @@ export function WellnessRecordEditor({ mode, initialDate }: { mode: RecordMode; 
 }
 
 export function WellnessReport({ onAsk }: { onAsk?: (question: string) => void }) {
-  const { state } = useWellness();
+  const { state, doctorName, exportPrefix } = useWellness();
   const [days, setDays] = useState<7 | 30>(7);
   const [metricKey, setMetricKey] = useState<MetricKey>('moodScore');
   const [selectedDate, setSelectedDate] = useState(wellnessDateKey());
@@ -118,7 +118,7 @@ export function WellnessReport({ onAsk }: { onAsk?: (question: string) => void }
   const chartMax = Math.max(1, ...points.map(point => point.record?.values[metricKey] ?? 0));
   const association = wellnessAssociation(points, associationKey, 'moodScore');
   const [includeNotes, setIncludeNotes] = useState(false);
-  const review = useMemo(() => buildWellnessRecordReview(state.records, days, today, includeNotes), [state.records, days, today, includeNotes]);
+  const review = useMemo(() => buildWellnessRecordReview(state.records, days, today, includeNotes, { name: doctorName, exportPrefix }), [state.records, days, today, includeNotes, doctorName, exportPrefix]);
   const prefix = useId();
   return <section className="yw-record-report">
     <header className="yw-record-intro"><span>GENTLE REFLECTION</span><h2>我的健康趋势</h2><p>看看真实记录里的变化，也允许有空白的日子。</p></header>

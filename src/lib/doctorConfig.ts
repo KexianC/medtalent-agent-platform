@@ -1,9 +1,10 @@
+import { SPECIALTY_FIELD_KEYS } from "../data/specialtyRecordFields.ts";
 import { DEFAULT_COMPONENTS, type BuilderComponentId } from "./agentBuilder.ts";
-import { noticeLines } from "../features/services/doctorCustom.ts";
+import { noticeLines } from "../data/doctorCustomData.ts";
 import type { Article } from "../data/doctorProfiles.ts";
-import type { DoctorVideo } from "../features/services/doctorCustom.ts";
+import type { DoctorVideo } from "../data/doctorCustomData.ts";
 
-type ModuleBase<Id extends string> = { id: Id; enabled: boolean; order: number };
+type ModuleBase<Id extends string> = { [Key in Id]: { id: Key; enabled: boolean; order: number } }[Id];
 /** 保留 v1 的八个 ID；日记建议和复诊摘要仅在 v2 扩展，不修改搭建器。 */
 export type DoctorModule =
   | ModuleBase<Exclude<BuilderComponentId, "records" | "voice">>
@@ -27,20 +28,20 @@ export type DoctorConfig = {
     verified: boolean;
   };
   theme: { accent: string; accentSoft: string; homeStyle: "standard" | "tang-home"; heroArtwork?: "standard" | "growth" };
-  home: { heroTitle: string; showNotice: boolean; quickQuestions: string[]; showStartCard?: boolean; resourcesCollapsed?: boolean; showExpertNote?: boolean };
+  home: { heroTitle: string; showNotice: boolean; quickQuestions: string[]; knowledgeFocus?: string; startHint?: string; showStartCard?: boolean; resourcesCollapsed?: boolean; showExpertNote?: boolean };
   chat: {
-    title: string; aiLabel: string; showTagline?: boolean; replyFooter?: boolean;
+    title: string; aiLabel: string; showAiLabel?: boolean; showTagline?: boolean; replyFooter?: boolean;
     citations: { enabled: boolean; hideWhenEmpty?: boolean; style?: "standard" | "tang" };
-    welcomeMessage?: string; demoReplyWhenModelMissing?: boolean;
+    welcomeMessage?: string; demoReplyWhenModelMissing?: boolean; demoReplyStyle?: "mental" | "ent"; quickQuestions?: string[];
   };
   modules: DoctorModule[];
   services: {
     intro?: string; groups: { title: string; items: string[] }[]; off: string[]; showPlanStatus?: boolean;
     /** 服务计划内的自评入口及分享说明，对应第四节最后一行。 */
-    assessmentPrompt?: string; shareHint?: string;
+    assessmentPrompt?: string; shareHint?: string; preparation?: string[]; showBoundaryTagline?: boolean;
   };
   records: {
-    placeholder?: string; steps: string[]; privacyHint?: string;
+    placeholder?: string; steps: string[]; privacyHint?: string; specialty?: { title: string; description: string; fieldKeys: string[] }; exportPrefix?: string; accountHint?: string; assessmentLabel?: string;
     askWithRecords?: { label: string; prompt: string; share: "summary" | "none" };
   };
   content: { articles: (string | Article)[]; videos: DoctorVideo[]; videoPlaceholders?: string[] };
@@ -146,11 +147,18 @@ export function normalizeDoctorConfig(input: unknown): DoctorConfig {
     if (!/^#[0-9a-fA-F]{6}$/.test(value)) fail(name + "须为 #RRGGBB 颜色。");
     return value;
   };
-  const home = object(value.home, ["heroTitle", "showNotice", "showStartCard", "resourcesCollapsed", "showExpertNote", "quickQuestions"], "首页");
-  const chat = object(value.chat, ["title", "showTagline", "aiLabel", "replyFooter", "citations", "welcomeMessage", "demoReplyWhenModelMissing"], "问答");
+  const home = object(value.home, ["heroTitle", "showNotice", "showStartCard", "resourcesCollapsed", "showExpertNote", "quickQuestions", "knowledgeFocus", "startHint"], "首页");
+  const chat = object(value.chat, ["title", "showTagline", "showAiLabel", "aiLabel", "replyFooter", "citations", "welcomeMessage", "demoReplyWhenModelMissing", "demoReplyStyle", "quickQuestions"], "问答");
   const citations = object(chat.citations, ["enabled", "hideWhenEmpty", "style"], "出处");
-  const services = object(value.services, ["intro", "groups", "off", "showPlanStatus", "assessmentPrompt", "shareHint"], "服务");
-  const records = object(value.records, ["placeholder", "steps", "askWithRecords", "privacyHint"], "记录");
+  const services = object(value.services, ["intro", "groups", "off", "showPlanStatus", "assessmentPrompt", "shareHint", "preparation", "showBoundaryTagline"], "服务");
+  const records = object(value.records, ["placeholder", "steps", "askWithRecords", "privacyHint", "specialty", "exportPrefix", "accountHint", "assessmentLabel"], "记录");
+  let specialty: DoctorConfig["records"]["specialty"];
+  if (records.specialty !== undefined) {
+    const item = object(records.specialty, ["title", "description", "fieldKeys"], "专科记录");
+    specialty = { title: str(item.title, "专科记录标题", 200, true), description: str(item.description, "专科记录说明"),
+      fieldKeys: unique(strings(item.fieldKeys, "记录字段", 30, 80), key => key, "记录字段") };
+    if (!specialty.fieldKeys.length || specialty.fieldKeys.some(key => !SPECIALTY_FIELD_KEYS.includes(key))) fail("专科记录字段无效。");
+  }
   let askWithRecords: DoctorConfig["records"]["askWithRecords"];
   if (records.askWithRecords !== undefined) {
     const ask = object(records.askWithRecords, ["label", "prompt", "share"], "带记录咨询");
@@ -185,19 +193,23 @@ export function normalizeDoctorConfig(input: unknown): DoctorConfig {
     theme: { accent: color(theme.accent, "主色"), accentSoft: color(theme.accentSoft, "浅色"), homeStyle: choice(theme.homeStyle, ["standard", "tang-home"] as const, "首页样式", "standard"),
       ...(theme.heroArtwork === undefined ? {} : { heroArtwork: choice(theme.heroArtwork, ["standard", "growth"] as const, "首页插图", "standard") }) },
     home: { heroTitle: str(home.heroTitle, "首页标题", 200), showNotice: bool(home.showNotice, "首页提示条", true), quickQuestions: strings(home.quickQuestions, "推荐问题", 4, 500),
-      ...boolOption(home, "showStartCard", "开始卡"), ...boolOption(home, "resourcesCollapsed", "近期关注折叠"), ...boolOption(home, "showExpertNote", "专家寄语") },
+      ...textOption(home, "knowledgeFocus", "知识库展示方向"), ...textOption(home, "startHint", "开始卡说明"), ...boolOption(home, "showStartCard", "开始卡"), ...boolOption(home, "resourcesCollapsed", "近期关注折叠"), ...boolOption(home, "showExpertNote", "专家寄语") },
     chat: { title: str(chat.title, "问答标题", 120, true), aiLabel: str(chat.aiLabel, "人工智能标识", 500, true),
-      ...boolOption(chat, "showTagline", "问答标语"), ...boolOption(chat, "replyFooter", "回复底栏"),
+      ...boolOption(chat, "showAiLabel", "显示人工智能标识"), ...boolOption(chat, "showTagline", "问答标语"), ...boolOption(chat, "replyFooter", "回复底栏"),
       citations: { enabled: bool(citations.enabled, "显示出处", true), ...boolOption(citations, "hideWhenEmpty", "无出处时隐藏"),
         ...(citations.style === undefined ? {} : { style: choice(citations.style, ["standard", "tang"] as const, "出处样式", "standard") }) },
+      ...(chat.quickQuestions === undefined ? {} : { quickQuestions: strings(chat.quickQuestions, "问答推荐问题", 10, 500) }),
+      ...(chat.demoReplyStyle === undefined ? {} : { demoReplyStyle: choice(chat.demoReplyStyle, ["mental", "ent"] as const, "演示回答样式", "mental") }),
       ...textOption(chat, "welcomeMessage", "欢迎语", 10000), ...boolOption(chat, "demoReplyWhenModelMissing", "未接模型演示") },
     modules: normalizeModules(value.modules),
     services: { ...textOption(services, "intro", "服务介绍"), off: strings(services.off, "关闭的服务", 100, 120),
       groups: list(services.groups, "服务分组", 30).map(entry => {
         const item = object(entry, ["title", "items"], "服务分组");
         return { title: str(item.title, "服务分组名称", 120, true), items: strings(item.items, "服务名称", 100, 120) };
-      }), ...boolOption(services, "showPlanStatus", "显示服务状态"), ...textOption(services, "assessmentPrompt", "服务计划自评问法"), ...textOption(services, "shareHint", "服务计划分享说明") },
-    records: { steps: strings(records.steps, "记录步骤", 20, 500), ...textOption(records, "placeholder", "记录输入提示"), ...textOption(records, "privacyHint", "隐私说明"),
+      }), ...(services.preparation === undefined ? {} : { preparation: strings(services.preparation, "就诊准备", 20, 500) }),
+      ...boolOption(services, "showBoundaryTagline", "服务边界标语"), ...boolOption(services, "showPlanStatus", "显示服务状态"), ...textOption(services, "assessmentPrompt", "服务计划自评问法"), ...textOption(services, "shareHint", "服务计划分享说明") },
+    records: { ...(specialty === undefined ? {} : { specialty }), ...textOption(records, "exportPrefix", "记录导出前缀", 80),
+      ...textOption(records, "accountHint", "账户保存说明"), ...textOption(records, "assessmentLabel", "自评名称", 80), steps: strings(records.steps, "记录步骤", 20, 500), ...textOption(records, "placeholder", "记录输入提示"), ...textOption(records, "privacyHint", "隐私说明"),
       ...(askWithRecords === undefined ? {} : { askWithRecords }) },
     content: {
       articles: list(content.articles, "科普文章").map(entry => {

@@ -52,8 +52,8 @@ export type DoctorExperience = {
   };
 };
 
-export const doctorExperiences: Record<string, DoctorExperience> = {
-  "fu-junfen": {
+// 沿用原通用回退展示；医生映射和未知标识共用这份既有数据。
+export const defaultDoctorExperience: DoctorExperience = {
     tagline: "控糖日常 · 关注成长",
     eyebrow: "PEDIATRIC DIABETES CARE",
     heroIcon: "drop",
@@ -72,7 +72,10 @@ export const doctorExperiences: Record<string, DoctorExperience> = {
     ],
     reminder: "本周糖尿病管理记录已完成 5 天，可继续记录血糖、胰岛素、饮食运动与不适症状。",
     theme: { accent: "#4E988F", accentStrong: "#236F68", accentRgb: "78, 152, 143", surface: "#EAF5EF", canvas: "#F7F3EA", ink: "#143C38" },
-  },
+  };
+
+export const doctorExperiences: Record<string, DoctorExperience> = {
+  "fu-junfen": defaultDoctorExperience,
   "chen-zhiling": {
     tagline: "畅快呼吸 · 清晰聆听",
     eyebrow: "ENT CARE JOURNEY",
@@ -276,4 +279,4 @@ export const doctorExperiences: Record<string, DoctorExperience> = {
 };
 
 export const findDoctorExperience = (slug?: string) =>
-  (slug && doctorExperiences[slug]) || doctorExperiences["fu-junfen"];
+  (slug && doctorExperiences[slug]) || defaultDoctorExperience;

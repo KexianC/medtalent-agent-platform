@@ -15,7 +15,7 @@ import './tang-chat-guidance.css';
 
 const moodIcons = { low: CloudIcon, tense: WavesIcon, neutral: LeafIcon, good: SmileyIcon, bright: SunIcon };
 
-type TangChatGuidanceProps = { embedded?: boolean; startWithScales?: boolean;
+type TangChatGuidanceProps = { doctorSlug: string; embedded?: boolean; startWithScales?: boolean;
   disabled: boolean;
   onOpenClinic?: () => void;
   onSend: (text: string) => Promise<boolean> | boolean;
@@ -114,10 +114,10 @@ function TangResult({ result, storageNotice, disabled, onDiscuss, onSaveSuppleme
   </section>;
 }
 
-export function TangChatGuidance({ disabled, onSend, embedded = false, startWithScales = false, onOpenClinic }: TangChatGuidanceProps) {
+export function TangChatGuidance({ doctorSlug, disabled, onSend, embedded = false, startWithScales = false, onOpenClinic }: TangChatGuidanceProps) {
   const account = useConsumerSession();
-  const [privacy] = useDoctorLocalState<DoctorPrivacySettings>('tang-jinsong', 'privacy', { saveChat: true, voicePlayback: true, reminders: true });
-  const [storedResults, setStoredResults, persistence] = useDoctorLocalState<TangAssessmentResult[]>('tang-jinsong', TANG_ASSESSMENT_SECTION, [], privacy.saveChat);
+  const [privacy] = useDoctorLocalState<DoctorPrivacySettings>(doctorSlug, 'privacy', { saveChat: true, voicePlayback: true, reminders: true });
+  const [storedResults, setStoredResults, persistence] = useDoctorLocalState<TangAssessmentResult[]>(doctorSlug, TANG_ASSESSMENT_SECTION, [], privacy.saveChat);
   const [sessionResults, setSessionResults] = useState<TangAssessmentResult[]>([]);
   const [expanded, setExpanded] = useState(true);
   const [showScales, setShowScales] = useState(startWithScales);

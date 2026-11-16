@@ -1,3 +1,4 @@
+import { getDoctorConfig } from "../doctors/index.ts";
 import type { BuilderServicePlan } from './agentBuilder';
 /** Shared service worksheets. All entries are the user's own preparation, never clinical decisions. */
 export type ServicePlan = {
@@ -14,8 +15,6 @@ export type ServiceWorkflow = { description: string; steps: string[]; action: 'r
 export const emptyServicePlans = (): ServicePlans => ({ version: 1, plans: [] });
 
 const preparation: Record<string, string[]> = {
-  'fu-junfen': ['整理带日期的血糖与生长记录', '记录校园、运动或生活中想沟通的问题', '整理已有检查与正在使用的药物信息'],
-  'chen-zhiling': ['整理鼻、耳或咽喉不适和眩晕发作的时间线', '记录接触环境、症状变化和日常影响', '整理已有检查资料和就诊问题清单'],
   'gong-wenbo': ['整理带日期的代谢指标记录', '记录饮食、活动和身体感受', '整理已有检查与当前用药信息'],
   'chen-jinbiao': ['整理已有病理、影像和治疗资料', '记录食欲、体重与身体感受变化', '列出复诊时想向医生确认的问题'],
   'wu-yuqin': ['整理体重、腰围与活动记录', '记录饮食、睡眠和日常习惯', '选择一个自己愿意尝试的生活习惯'],
@@ -23,12 +22,10 @@ const preparation: Record<string, string[]> = {
   'luo-jun': ['整理已有影像、治疗与出院资料', '记录体温、疼痛和食欲变化', '记录医疗机构已安排的复查事项'],
   'yu-weihua': ['整理已有检查与手术相关资料', '记录饮食、活动和恢复中的感受', '记录医疗机构已交代的复诊事项'],
   'zhou-yong': ['整理咳嗽、气促与活动记录', '记录吸烟、接触环境及装置使用疑问', '整理已有影像与肺功能检查资料'],
-  'yu-wen': ['整理睡眠、情绪和日常状态记录', '记录变化出现的时间及生活影响', '整理既往就诊、检查和当前用药信息'],
-  'tang-jinsong': ['整理睡眠、情绪和日常功能变化', '记录变化开始的时间及家人观察', '整理既往就诊、检查和当前用药信息'],
 };
 
 export function getServiceWorkflow(slug: string, service: string): ServiceWorkflow {
-  const focus = Object.prototype.hasOwnProperty.call(preparation, slug) ? preparation[slug] : ['整理相关健康记录与已有资料', '记录变化时间和日常感受', '列出希望咨询的问题'];
+  const focus = getDoctorConfig(slug)?.services.preparation ?? (Object.prototype.hasOwnProperty.call(preparation, slug) ? preparation[slug] : ['整理相关健康记录与已有资料', '记录变化时间和日常感受', '列出希望咨询的问题']);
   if (/语音/.test(service)) return { action: 'voice', description: '先整理想说的问题，再进入当前对话使用语音输入。', steps: ['写下最想了解的问题', '确认内容中没有不必要的个人身份信息', '进入问答后选择语音输入'], question: '我想通过语音了解健康问题。' };
   if (/记录|日记|打卡|趋势|进度|不良反应/.test(service)) return { action: 'record', description: `使用健康管理中的真实记录回顾${service}；未测量的项目可留空。`, steps: [focus[0], '补充当天的实际感受和备注', '保存记录并回顾历史变化'], question: `我想了解怎样使用${service}整理日常情况。` };
   if (/准备|清单|就诊/.test(service)) return { action: 'prepare', description: '保存自己的资料准备进度和待问问题，方便就诊前检查。', steps: [...focus, '列出本次最想沟通的问题'], question: `请帮我梳理${service}时还可以准备哪些信息。` };

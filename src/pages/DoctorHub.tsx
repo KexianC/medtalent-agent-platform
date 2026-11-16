@@ -1,3 +1,4 @@
+import { getDoctorConfig } from "../doctors/index";
 import {
   ArrowRight,
   Baby,
@@ -17,8 +18,6 @@ import { useDoctorDirectory } from "../hooks/useDoctorDirectory";
 import { doctorTopics, matchesDoctorTopic, type TopicKey } from "../lib/doctorTopics";
 
 const knowledgeFocus: Record<string, string> = {
-  "fu-junfen": "儿童糖尿病与生长发育科普",
-  "chen-zhiling": "耳鼻喉症状记录与就诊准备",
   "gong-wenbo": "代谢健康与中医生活调养科普",
   "chen-jinbiao": "肿瘤健康知识与康复科普",
   "wu-yuqin": "体重管理与健康生活方式科普",
@@ -26,8 +25,6 @@ const knowledgeFocus: Record<string, string> = {
   "luo-jun": "肝胆肿瘤介入知识科普",
   "yu-weihua": "胃肠肝胆与代谢健康科普",
   "zhou-yong": "呼吸健康与肺部疾病科普",
-  "yu-wen": "睡眠、情绪与认知健康科普",
-  "tang-jinsong": "精神心理、睡眠与早期干预科普",
 };
 
 const topicIcons = { child: Baby, endocrine: Drop, ent: Ear, respiratory: Wind, oncology: PlusCircle, digestive: FirstAid, women: GenderFemale, mental: Brain };
@@ -45,7 +42,7 @@ export default function DoctorHub() {
     const normalizedQuery = query.trim().toLocaleLowerCase("zh-CN");
 
     return doctors.filter((doctor) => {
-      const searchable = [doctor.name, doctor.department, doctor.specialty, knowledgeFocus[doctor.slug], ...doctor.topics]
+      const searchable = [doctor.name, doctor.department, doctor.specialty, (getDoctorConfig(doctor.slug)?.home.knowledgeFocus ?? knowledgeFocus[doctor.slug]), ...doctor.topics]
         .join(" ")
         .toLocaleLowerCase("zh-CN");
       const matchesQuery = !normalizedQuery || searchable.includes(normalizedQuery);
@@ -189,7 +186,7 @@ export default function DoctorHub() {
                   <span className="hub-doctor-department">{doctor.department}</span>
                   <div className="hub-doctor-name"><h3>{doctor.name}</h3><span className="hub-doctor-department-inline">{doctor.department}</span></div>
                   {doctor.hospital && <p className="hub-doctor-hospital">{doctor.hospital}</p>}
-                  <p className="hub-doctor-focus">{knowledgeFocus[doctor.slug] || doctor.specialty || doctor.intro}</p>
+                  <p className="hub-doctor-focus">{(getDoctorConfig(doctor.slug)?.home.knowledgeFocus ?? knowledgeFocus[doctor.slug]) || doctor.specialty || doctor.intro}</p>
                 </div>
                 <Link to={`/d/${doctor.slug}`} className="hub-doctor-link" aria-label={`进入${doctor.name}的健康科普智能体`}>
                   <span className="hub-desktop-title">进入科普智能体</span><span className="hub-mobile-title">进入智能体</span> <ArrowRight size={15} aria-hidden="true" />
