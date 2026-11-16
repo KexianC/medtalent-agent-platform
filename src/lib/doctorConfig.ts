@@ -54,9 +54,13 @@ export type DoctorConfig = {
 };
 
 const fail = (message: string): never => { throw new Error(message); };
-const object = (input: unknown, keys: readonly string[], name: string): Record<string, unknown> => {
+// 普通对象的原型是 null，或是某个运行环境的 Object.prototype（它自己的原型是 null）。
+const isPlainPrototype = (proto: unknown): boolean => proto === null || Object.getPrototypeOf(proto) === null;
+const object =(input: unknown, keys: readonly string[], name: string): Record<string, unknown> => {
   if (!input || typeof input !== "object" || Array.isArray(input)
-    || ![Object.prototype, null].includes(Object.getPrototypeOf(input))
+    // 只接受普通对象；不直接比较 Object.prototype，小程序或隔离运行环境里它可能不是同一个对象。
+    || Object.prototype.toString.call(input) !== "[object Object]"
+    || !isPlainPrototype(Object.getPrototypeOf(input))
     || Reflect.ownKeys(input).some(key => typeof key !== "string" || !keys.includes(key))) {
     fail(name + "含不支持的字段或格式无效。");
   }

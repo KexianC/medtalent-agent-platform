@@ -4,7 +4,8 @@ import type { DoctorCustom } from "../data/doctorCustomData.ts";
 
 /** 只搬运现有资料；未有核对、知识库状态证据的字段沿用空白草稿默认。 */
 export function createConfig(doctor: DoctorProfile, custom?: DoctorCustom): DoctorConfig {
-  const base = structuredClone(BLANK_DOCTOR_CONFIG);
+  // 微信小程序原生环境没有 structuredClone；空白模板只含普通数据，用 JSON 复制。
+  const base: DoctorConfig = JSON.parse(JSON.stringify(BLANK_DOCTOR_CONFIG));
   const bio = custom?.bio;
   return { ...base, slug: doctor.slug,
     profile: { ...base.profile, name: doctor.name, hospital: doctor.hospital, department: doctor.department,
