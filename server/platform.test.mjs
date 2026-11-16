@@ -11,6 +11,10 @@ import { normalizeAgent, normalizeSource } from "./domain.mjs";
 import { generateAgentDrafts, generateContentDraft, optimizeAgentPrompt } from "./ai-studio.mjs";
 import { createAuth, hashPassword, verifyPassword, passwordField } from "./auth.mjs";
 
+const classificationResponse = () => Response.json({
+  choices: [{ message: { content: JSON.stringify({ level: "safe", subject: "self" }) } }],
+});
+
 const seed = { slug: "demo-one", name: "科普助手", hospital: "", department: "专业科普", specialty: "资料与健康概念解释", intro: "测试数据" };
 const createInput = (slug, name = "测试智能体") => ({ slug, name, department: "专业科普", specialty: "文档知识解释", intro: "仅用于自动化测试" });
 const strictReembeddingEnv = {
@@ -218,6 +222,7 @@ test("job, overview and audit APIs project legacy rows without credential-bearin
     upstreamBodies.push(body);
     const request = JSON.parse(body);
     const system = request.messages?.[0]?.content || "";
+    if (request.response_format?.type === "json_object" && system.includes("危机分类")) return classificationResponse();
     const content = system.includes("健康科普内容编辑")
       ? JSON.stringify({ title: "安全草稿", summary: "安全摘要", body: "安全正文", tags: ["安全"] })
       : system.includes("智能体提示词编辑")
@@ -347,7 +352,7 @@ test("job, overview and audit APIs project legacy rows without credential-bearin
       assert.equal(body.includes(secret), false, `external AI request leaked ${secret}`);
     }
   }
-  assert.equal(upstreamBodies.length, 3);
+  assert.equal(upstreamBodies.length, 4);
   const projected = jobs.data.find((job) => job.id === "legacy-sensitive-job");
   assert.equal(projected.payload, undefined);
   assert.equal(projected.result.scanned, 7);
@@ -631,7 +636,11 @@ test("public error codes cannot collide with configured provider credentials", a
   for (const item of cases) {
     const f = await fixture(t, {
       env: item.env(item.secret),
-      fetchImpl: async () => new Response("provider failed", { status: 500 }),
+      fetchImpl: async (_url, options) => {
+        const payload = JSON.parse(options.body);
+        if (payload.response_format?.type === "json_object" && payload.messages?.[0]?.content.includes("危机分类")) return classificationResponse();
+        return new Response("provider failed", { status: 500 });
+      },
     });
     const response = await item.request(f);
     assert.equal(response.status, 502);
@@ -1169,6 +1178,7 @@ test("chat uses published model configuration plus approved RAG context and retu
   const f = await fixture(t, { env: { AI_API_KEY: "synthetic-test-key", AI_API_URL: "https://model.invalid/v1", AI_MODEL: "mock-model" },
     fetchImpl: async (url, options) => {
       requests.push({ url, payload: JSON.parse(options.body) });
+      if (JSON.parse(options.body).response_format?.type === "json_object") return classificationResponse();
       if (JSON.parse(options.body).stream) return new Response('data: {"choices":[{"delta":{"content":"测试知识答复。"}}]}\n\ndata: [DONE]\n\n', { headers: { "Content-Type": "text/event-stream" } });
       return Response.json({ choices: [{ message: { content: "根据资料[1]，青竹测试代号为RAG77。" } }] });
     } });

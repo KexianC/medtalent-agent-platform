@@ -28,7 +28,19 @@
 .tang-guide-moods { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; margin: 12px 0; }
 .tang-guide-moods button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 76px; min-width: 0; padding: 8px 3px; border: 1px solid #ebddd0; border-radius: 11px; background: #fffcf8; color: #73533e; font-size: 13px; line-height: 1.5; white-space: normal; overflow-wrap: anywhere; }
 .tang-guide-moods button[aria-pressed="true"] { border-color: var(--journey-accent, #ab805e); background: #f3e5d8; }
-.tang-guide-mood-symbol { font-family: Georgia, serif; font-size: 25px; line-height: 1; }
+.tang-guide-mood-symbol { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; line-height: 1; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .tang-guide-moods button { transition: transform 120ms ease-out; }
+  .tang-guide-moods button:active:not(:disabled) { transform: scale(.96); }
+  .tang-guide-moods button[aria-pressed="true"] .tang-guide-mood-symbol {
+    animation: tang-mood-settle 300ms ease-out 1;
+  }
+  @keyframes tang-mood-settle {
+    0%, 100% { transform: scale(1); }
+    45% { transform: scale(1.08); }
+  }
+}
 .tang-guide-assess-link { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px; border: 0; border-radius: 11px; background: color-mix(in srgb, var(--journey-accent, #ab805e) 10%, #fff); color: var(--journey-accent-strong, #845c40); text-align: left; }
 .tang-guide-assess-link > span { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .tang-guide-assess-link strong { font-size: 14px; font-weight: 600; }
@@ -79,10 +91,15 @@
 .tang-guide-share-note input { flex-shrink: 0; width: 18px; height: 18px; margin: 3px 0 0; accent-color: var(--journey-accent-strong, #845c40); }
 .tang-guide-share-note span { min-width: 0; overflow-wrap: anywhere; }
 
+@media (max-width: 430px) {
+  .tang-guide-moods { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+  .tang-guide-moods button { grid-column: span 2; white-space: nowrap; overflow-wrap: normal; }
+  .tang-guide-moods button:nth-child(n + 4) { grid-column: span 3; }
+}
+
 @media (max-width: 350px) {
   .tang-guide-content { padding-right: 10px; padding-left: 10px; }
   .tang-guide-toggle { padding-right: 10px; padding-left: 10px; }
-  .tang-guide-moods { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
   .tang-guide-primary,
   .tang-guide-secondary { padding-right: 9px; padding-left: 9px; }
 }

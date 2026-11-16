@@ -1,6 +1,8 @@
 // These instructions tailor the conversation to each published specialty.
 // They describe information gathering and supported workflows, not clinical
 // protocols or a replacement for reviewed knowledge sources.
+// Optional safetyRules ({ id, pattern: RegExp, level: "emergency" | "urgent",
+// reply }) only add local interceptions after the platform safety checks.
 export const specialtyChatProfiles = {
   "fu-junfen": {
     promptLines: [
@@ -11,6 +13,16 @@ export const specialtyChatProfiles = {
     ],
   },
   "chen-zhiling": {
+    safetyRules: [
+      // 占位，待陈志凌医生审核
+      { id: "sudden-hearing-loss", pattern: /(?:突然|忽然)(?:听不见|听不到|听力下降)|听力(?:突然|忽然)下降/u, level: "urgent", reply: "请当天尽快到耳鼻喉科或急诊就诊，不要等待观察。" },
+      // 占位，待陈志凌医生审核
+      { id: "dizziness-with-neurological-signs", pattern: /^(?=.*(?:眩晕|头晕))(?=.*(?:言语不清|肢体无力|看东西重影|口角歪斜))/u, level: "emergency", reply: "你描述的情况可能很紧急，请立即拨打 120，并请身边的人陪着。" },
+      // 占位，待陈志凌医生审核
+      { id: "uncontrolled-ent-bleeding", pattern: /^(?=.*(?:鼻出血|流鼻血|鼻血|扁桃体(?:手术|术)后出血))(?=.*(?:止不住|量大|大量|很多))/u, level: "emergency", reply: "请立即到急诊或拨打 120，并请身边的人陪同。" },
+      // 占位，待陈志凌医生审核
+      { id: "airway-obstruction", pattern: /^(?=.*(?:喉咙肿|异物卡住))(?=.*(?:喘不上气|喘不过气|呼吸困难))/u, level: "emergency", reply: "请立即拨打 120，并请身边的人协助求助。" },
+    ],
     promptLines: [
       "【耳鼻喉症状与检查沟通重点】",
       "先明确主要困扰在鼻、耳、咽喉还是眩晕，询问起病时间、单侧或双侧、持续或反复、伴随表现；儿童问题同时关注睡眠和日常活动影响。",

@@ -80,6 +80,6 @@ export default function ServicePlanWorksheet({ doctor, service, planId = service
     {workflow.action === 'assessment' && doctor.slug === 'tang-jinsong' && <button type="button" className="journey-secondary-button" onClick={() => onAsk('我想了解最近的心理状态，请带我做一次非诊断性的自我观察。')}>进入对话中的心理自评</button>}
     <details className="service-plan-summary"><summary>查看将带入咨询的摘要</summary><pre>{summary}</pre><p>摘要最多1900字；完整备注保留在计划中。</p></details>
     <div className="service-plan-actions"><button type="button" className="journey-secondary-button" onClick={async () => { try { await navigator.clipboard.writeText(summary); setNotice('摘要已复制。'); } catch { setNotice('无法自动复制，请展开摘要后手动选择复制。'); } }}>复制摘要</button><button type="button" className="journey-primary-button" onClick={() => onAsk(summary.replace(/\s*\n\s*/g, '；'))}>带摘要咨询</button></div>
-    <p className="journey-sheet-disclaimer">只有点击“带摘要咨询”后，内容才会进入问答草稿；确认发送后再提交给 AI。{dirty ? '当前修改尚未保存。' : ''}</p>
+    <p className="journey-sheet-disclaimer">{doctor.slug === "tang-jinsong" ? '这些内容默认不会发给 AI。点“带摘要咨询”后才放进问答输入框，你确认发送才会提交。' : '只有点击“带摘要咨询”后，内容才会进入问答草稿；确认发送后再提交给 AI。'}{dirty ? '当前修改尚未保存。' : ''}</p>
   </div>;
 }

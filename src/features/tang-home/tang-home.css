@@ -1,0 +1,55 @@
+.tang-home-v02 { background: #fff; color: #171a23; padding-bottom: 100px; }
+.tang-home-top { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #e8eef8; }
+.tang-home-top > span { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #2b8a7e; color: #fff; font-size: 12px; font-weight: 700; flex: none; }
+.tang-home-top h1 { flex: 1; margin: 0; font-size: 17px; }
+.tang-home-top button { border: 0; border-radius: 18px; background: #fff; padding: 8px 12px; color: #343e52; }
+.tang-home-ticker { display: flex; gap: 8px; align-items: center; overflow: hidden; padding: 8px 14px; background: #eef1f8; font-size: 13px; }
+.tang-home-ticker > b { flex: none; background: #2b8a7e; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+.tang-home-ticker-window { min-width: 0; overflow: hidden; }
+.tang-home-ticker-track { display: flex; width: max-content; animation: tang-article-roll 30s linear infinite; }
+.tang-home-ticker-copy { display: flex; flex: none; }
+.tang-home-ticker-copy span { white-space: nowrap; padding-right: 30px; }
+.tang-home-ticker:hover .tang-home-ticker-track { animation-play-state: paused; }
+@keyframes tang-article-roll { to { transform: translateX(-50%); } }
+.tang-home-hero { position: relative; height: 252px; overflow: hidden; background: linear-gradient(#e7f0f8, #dbe8f2 65%, #fff); }
+.tang-home-hero img { position: absolute; right: 16px; bottom: 0; width: 44%; height: 220px; object-fit: cover; border-radius: 16px 16px 0 0; }
+.tang-home-greeting { position: absolute; left: 14px; top: 78px; z-index: 1; width: 57%; max-width: 240px; border-radius: 14px; background: #fff; padding: 12px; font-size: 14px; line-height: 1.7; box-shadow: 0 4px 18px #2b416614; }
+.tang-home-greeting strong { color: #3161ff; }
+.tang-home-tags { position: absolute; inset: 16px 14px; pointer-events: none; }
+.tang-home-tags span { position: absolute; background: #fffffff0; border-radius: 14px; padding: 5px 10px; font-size: 12px; color: #3a5a8c; max-width: 56%; }
+.tang-home-tags span:nth-child(1) { left: 0; top: 0; }
+.tang-home-tags span:nth-child(2) { right: 0; top: 0; }
+.tang-home-tags span:nth-child(3) { left: 0; bottom: 42px; }
+.tang-home-tags span:nth-child(4) { left: 0; bottom: 4px; }
+.tang-home-groups { padding: 0 14px 14px; }
+.tang-home-groups h2 { font-size: 16px; margin: 18px 0 10px; }
+.tang-home-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+.tang-home-tiles button { display: flex; align-items: center; justify-content: flex-start; gap: 6px; min-height: 52px; padding: 10px 7px; border: 0; border-radius: 12px; background: #f5f6f8; color: #171a23; font-size: 14px; }
+.tang-home-tiles button span { font-size: 18px; flex: none; }
+.tang-home-dock { position: absolute; bottom: max(16px, env(safe-area-inset-bottom)); left: 18px; right: 18px; display: flex; overflow: hidden; border-radius: 28px; box-shadow: 0 6px 18px #1e3c8c40; z-index: 5; }
+.tang-home-dock button { flex: 1; border: 0; padding: 16px 0; font-size: 16px; font-weight: 700; color: #fff; background: #2b8a7e; }
+.tang-home-dock button + button { background: linear-gradient(90deg, #3f7bff, #2457f5); }
+.tang-home-v02 button:focus-visible, .tang-consent button:focus-visible { outline: 3px solid #ffb641; outline-offset: -3px; }
+.tang-consent-stage { min-height: 100dvh; display: grid; place-items: center; padding: 22px; background: #e8eef8; }
+.tang-consent { max-width: 420px; background: white; padding: 24px; border-radius: 20px; box-shadow: 0 10px 40px #1e3c8c20; color: #171a23; }
+.tang-consent h1 { margin-top: 0; font-size: 20px; }
+.tang-consent ul { padding-left: 20px; line-height: 1.8; }
+.tang-consent > div { display: flex; gap: 10px; }
+.tang-consent button { flex: 1; border: 0; border-radius: 24px; padding: 12px; background: #eef1fb; color: #171a23; }
+.tang-consent button + button { background: #246d50; color: #fff; }
+.tang-reply-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; font-size: 11px; color: #667085; }
+.tang-reply-footer button { flex: none; border: 1px solid #e6e9f1; border-radius: 6px; background: white; padding: 4px 8px; color: #475467; }
+.tang-reply-follow { display: grid; gap: 6px; margin-top: 12px; }
+.tang-reply-follow button { text-align: left; padding: 9px 12px; border-radius: 16px; border: 1px solid #e6e9f1; background: white; color: #344054; font-size: 13px; }
+.tang-reply-human { margin-top: 12px; padding: 12px; border-radius: 12px; background: white; font-size: 13px; }
+.tang-reply-human button { width: 100%; margin-top: 10px; padding: 10px; border: 0; border-radius: 20px; background: #3161ff; color: white; }
+@media (prefers-reduced-motion: reduce) { .tang-home-ticker-track { animation: none; } .tang-home-ticker-window { overflow-x: auto; } .tang-home-ticker-copy[aria-hidden] { display: none; } }
+@media (max-width: 360px) { .tang-home-tiles button { flex-direction: column; font-size: 13px; } .tang-home-top h1 { font-size: 15px; } }
+.tang-consent-stage { background: #f3f7f2; }
+.tang-consent h1 { color: #214437; margin-bottom: 14px; }
+.tang-consent ul { list-style: disc; margin: 0 0 14px; padding-left: 20px; color: #214437; }
+.tang-consent li { margin-bottom: 8px; }
+.tang-consent p { margin: 0 0 16px; color: #52685d; font-size: 14px; }
+.tang-consent p.tang-consent-text { margin-bottom: 12px; color: #214437; font-size: 15px; line-height: 1.7; }
+.tang-consent button { background: #e8f5ee; color: #246d50; }
+.tang-reply-human button { background: #246d50; color: #fff; }

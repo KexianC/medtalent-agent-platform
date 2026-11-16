@@ -53,6 +53,7 @@ test("all eleven seeded agents support published normal and streaming chat with 
   assert.deepEqual(doctorProfiles.map((doctor) => doctor.slug).sort(), [...expectedSlugs].sort());
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "medtalent-seed-chat-test-"));
   const providerRequests = [];
+  const classificationRequests = [];
   let expectedDoctor;
   let platform;
   let server;
@@ -80,6 +81,13 @@ test("all eleven seeded agents support published normal and streaming chat with 
       assert.ok(expectedDoctor, "a request must belong to the currently tested agent");
       assert.equal(payload.model, env.AI_MODEL);
       assert.equal(payload.messages[0].role, "system");
+      // Every doctor classifies safety; providerRequests counts replies.
+      if (payload.response_format?.type === "json_object") {
+        assert.equal(payload.stream, false);
+        assert.match(payload.messages[0].content, /危机分类/);
+        classificationRequests.push(payload);
+        return Response.json({ choices: [{ message: { content: '{"level":"safe","subject":"self"}' } }] });
+      }
       assert.ok(payload.messages[0].content.includes(`以${expectedDoctor.name}医生专业方向配置`));
       assert.ok(payload.messages[0].content.includes(expectedDoctor.specialty));
       assert.ok(payload.messages[0].content.includes(expectedDoctor.department));
@@ -151,6 +159,7 @@ test("all eleven seeded agents support published normal and streaming chat with 
     });
   }
   assert.equal(providerRequests.length, 22);
+  assert.equal(classificationRequests.length, 22, "Every doctor classifies once before each normal/streaming reply");
   const usage = platform.database.sqlite.prepare("SELECT agent_slug,model,success FROM usage ORDER BY rowid").all();
   assert.equal(usage.length, 22);
   for (const slug of expectedSlugs) {

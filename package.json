@@ -21,6 +21,7 @@
     "check:wechat:release": "node scripts/check-wechat-miniprogram.mjs --release --online",
     "package:wechat": "node scripts/package-wechat-miniprogram.mjs",
     "test:wechat": "node --test --test-isolation=none tests/wechat-runtime.test.mjs tests/wechat-config.test.mjs tests/wechat-capabilities.test.mjs tests/wechat-h5-bridge.test.mjs server/wechat-bridge.test.mjs",
+    "eval:crisis": "node --env-file-if-exists=.env.local scripts/run-crisis-eval.mjs",
     "test": "node --test server/*.test.mjs tests/*.test.mjs",
     "backup": "node --env-file-if-exists=.env.local scripts/backup.mjs",
     "backup:mysql": "node --env-file-if-exists=.env.local scripts/backup-mysql.mjs",

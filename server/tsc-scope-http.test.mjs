@@ -18,7 +18,7 @@ const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai'
 async function fixture(t, { failSearch = true } = {}) {
   const temporaryRoot = await fs.realpath(os.tmpdir());
   const directory = await fs.mkdtemp(path.join(temporaryRoot, 'tsc-scope-http-'));
-  const calls = { search: [], provider: [] };
+  const calls = { search: [], provider: [], classification: [] };
   let platform;
   let server;
   t.after(async () => {
@@ -39,6 +39,13 @@ async function fixture(t, { failSearch = true } = {}) {
     fetchImpl: async (url, options) => {
       assert.equal(url, `${env.AI_API_URL}/chat/completions`, 'Unexpected provider or RAG request');
       const body = JSON.parse(options.body);
+      // Every doctor's safety classification precedes scope/RAG; keep reply counts separate.
+      if (body.response_format?.type === 'json_object') {
+        assert.equal(body.stream, false);
+        assert.ok(body.messages.some(message => message.role === 'system' && message.content.includes('危机分类')));
+        calls.classification.push(body);
+        return Response.json({ choices: [{ message: { content: '{"level":"safe","subject":"self"}' } }] });
+      }
       calls.provider.push(body);
       assert.ok(body.messages.some(message => message.content.includes('模拟检索引用')));
       const reply = '先保持规律作息，并观察白天的精力变化。';
@@ -99,6 +106,7 @@ test('Tang unrelated and clarification replies bypass failing RAG through ordina
   }
   assert.deepEqual(f.calls.search, []);
   assert.deepEqual(f.calls.provider, []);
+  assert.equal(f.calls.classification.length, 4);
 });
 
 test('Tang crisis and consented record safety remain ahead of scope and failing RAG in both HTTP paths', async t => {
@@ -117,6 +125,7 @@ test('Tang crisis and consented record safety remain ahead of scope and failing 
   }
   assert.deepEqual(f.calls.search, []);
   assert.deepEqual(f.calls.provider, []);
+  assert.deepEqual(f.calls.classification, []);
 });
 
 test('related Tang context and other doctors retain RAG and provider execution in both HTTP paths', async t => {
@@ -135,4 +144,5 @@ test('related Tang context and other doctors retain RAG and provider execution i
   }
   assert.equal(f.calls.search.length, 6);
   assert.equal(f.calls.provider.length, 6);
+  assert.equal(f.calls.classification.length, 6, 'All three cases classify in each HTTP path');
 });
