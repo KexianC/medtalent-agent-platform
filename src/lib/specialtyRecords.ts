@@ -25,6 +25,9 @@ const fields = {
   heightCm: { key: "heightCm", label: "身高", unit: "cm", min: 1, max: 300, step: 0.1 },
   weightKg: { key: "weightKg", label: "体重", unit: "kg", min: 0.1, max: 600, step: 0.1 },
   waistCm: { key: "waistCm", label: "腰围", unit: "cm", min: 1, max: 400, step: 0.1 },
+  vertigoAttackCount: { key: "vertigoAttackCount", label: "眩晕发作次数", unit: "次", min: 0, max: 1000, step: 1 },
+  longestVertigoMinutes: { key: "longestVertigoMinutes", label: "最长一次持续时间", unit: "分钟", min: 0, max: 1440, step: 1 },
+  earFullnessScore: { key: "earFullnessScore", label: "耳闷胀感评分", unit: "分", min: 0, max: 10, step: 1, hint: "0–10" },
   nasalBlockageScore: { key: "nasalBlockageScore", label: "鼻塞自评分", unit: "分", min: 0, max: 10, step: 1, hint: "0分无鼻塞，10分非常明显" },
   tinnitusScore: { key: "tinnitusScore", label: "耳鸣自评分", unit: "分", min: 0, max: 10, step: 1, hint: "0分无耳鸣，10分非常明显" },
   throatDiscomfortScore: { key: "throatDiscomfortScore", label: "咽喉不适自评分", unit: "分", min: 0, max: 10, step: 1, hint: "0分无不适，10分非常明显" },
@@ -49,7 +52,7 @@ const config = (title: string, description: string, keys: Array<keyof typeof fie
 
 const specialtyConfigs: Record<string, SpecialtyRecordConfig> = {
   "fu-junfen": config("儿童血糖与生长记录", "按实际测量记录血糖、身高和体重，便于回顾变化。", ["fastingGlucose", "postMealGlucose", "heightCm", "weightKg"]),
-  "chen-zhiling": config("耳鼻喉症状记录", "记录当天鼻塞、耳鸣和咽喉不适的主观感受。", ["nasalBlockageScore", "tinnitusScore", "throatDiscomfortScore"]),
+  "chen-zhiling": config("耳鼻喉症状记录", "记录当天鼻塞、耳鸣、咽喉不适和眩晕的主观感受，便于就诊时回顾。可能的诱因可以写在备注里。", ["nasalBlockageScore", "tinnitusScore", "throatDiscomfortScore", "vertigoAttackCount", "longestVertigoMinutes", "earFullnessScore"]),
   "gong-wenbo": config("代谢健康记录", "记录血糖、体重和腰围，整理日常测量结果。", ["fastingGlucose", "postMealGlucose", "weightKg", "waistCm"]),
   "chen-jinbiao": config("营养与身体感受记录", "记录体重、疼痛和食欲，便于复诊时回顾。", ["weightKg", "painScore", "appetiteScore"]),
   "wu-yuqin": config("体重与生活习惯记录", "记录体重、腰围、活动和睡眠，回顾生活习惯。", ["weightKg", "waistCm", "activityMinutes", "sleepHours"]),

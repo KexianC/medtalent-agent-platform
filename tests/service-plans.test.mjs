@@ -18,7 +18,7 @@ test('all eleven agents have actionable workflows for every configured service',
     assert.ok(['record', 'prepare', 'learn', 'voice', 'assessment'].includes(workflow.action));
     count++;
   }
-  assert.equal(count, 44);
+  assert.equal(count, 43); // Chen now exposes the three approved preparation services.
   assert.notDeepEqual(getServiceWorkflow('fu-junfen', '术前准备清单').steps, getServiceWorkflow('zhou-yong', '术前准备清单').steps);
   assert.equal(getServiceWorkflow('__proto__', '自定义服务').action, 'learn');
 });
@@ -68,4 +68,14 @@ test('the preview summary contains only the selected plan and stays inside the c
   assert.ok(summary.includes(current.completed[0]));
   assert.ok(buildServicePlanSummary('于卫华', plan({ note: '详'.repeat(2000) })).length <= 1900);
   assert.ok(!buildServicePlanSummary('于卫华', plan({ note: '', targetDate: '', completed: [] })).includes('undefined'));
+});
+
+test('Chen preparation covers ENT symptoms and retains the vertigo timeline', () => {
+  const workflow = getServiceWorkflow('chen-zhiling', '就诊问题清单');
+  assert.deepEqual(workflow.steps.slice(0, 3), [
+    '整理鼻、耳或咽喉不适和眩晕发作的时间线',
+    '记录接触环境、症状变化和日常影响',
+    '整理已有检查资料和就诊问题清单',
+  ]);
+  assert.doesNotMatch(JSON.stringify(workflow), /药物/);
 });

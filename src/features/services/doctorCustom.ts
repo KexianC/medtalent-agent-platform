@@ -1,18 +1,23 @@
 // 每位医生的差异化内容只改这个文件；页面和流程统一。
 // 模块位置固定：医生只用 off 关掉不要的功能，不能挪位置；要新增模块走定制开发。
+import { chenArticleDetails, type ArticleDetail } from "./chenEducation.ts";
+
 export type DoctorVideo = { title: string; url: string; platform: string; keywords: string[] };
 export type DoctorBio = {
   department: string;
   specialty: string;
   topics: string[];
   tags: string[];
-  bookingDepartments: { campus: string; department: string }[];
+  bookingDepartments: { campus: string; department: string; hospital?: string }[];
   career: string;
   academic: string[];
   achievements: string[];
   clinics: { campus: string; times: string[]; image?: string }[];
 };
+export type DoctorMaterial = { title: string; source: string; note?: string };
 export type DoctorCustom = {
+  unifiedTemplate?: boolean;
+  materials?: DoctorMaterial[];
   featureGroups: { title: string; items: string[] }[];
   off: string[];
   videos: DoctorVideo[];
@@ -21,13 +26,14 @@ export type DoctorCustom = {
   introPhoto?: string;
   bio?: DoctorBio;
   expertSections: { title: string; body: string }[];
+  articleDetails?: Record<string, ArticleDetail>;
 };
 
-const common = { title: "常用功能", items: ["病友信息", "人工咨询", "科普宣教"] };
 const pending = "待医生提供";
 
 export const doctorCustoms: Record<string, DoctorCustom> = {
   "tang-jinsong": {
+    unifiedTemplate: true,
     servicesIntro: "了解怎么照顾自己，把就诊前的准备做好。",
     featureGroups: [
       { title: "心理健康支持", items: ["今日心境", "健康宣教", "家属照护"] },
@@ -77,14 +83,44 @@ export const doctorCustoms: Record<string, DoctorCustom> = {
     expertSections: [{ title: "团队简介", body: pending }, { title: "获奖荣誉", body: pending }],
   },
   "chen-zhiling": {
+    unifiedTemplate: true,
+    servicesIntro: "了解耳鼻喉健康知识，把就诊前的准备做好。",
     featureGroups: [
-      common,
-      { title: "耳鼻喉管理", items: ["耳鼻喉症状自查", "检查报告解读", "术后康复指导", "过敏季提醒"] },
-      { title: "医疗服务", items: ["就诊准备", "预约挂号", "更多服务"] },
+      { title: "耳鼻喉健康支持", items: ["科普宣教", "症状记录", "资料库"] },
+      { title: "门诊服务", items: ["就诊准备", "门诊指引", "留言咨询", "更多服务"] },
     ],
     off: [],
-    videos: [],
-    expertSections: [{ title: "团队简介", body: pending }, { title: "获奖荣誉", body: pending }],
+    // 公开外链（有来医生平台），只跳转不嵌入；使用授权待确认。
+    videos: [
+      { title: "内耳眩晕看什么科", url: "https://m.youlai.cn/video/article/294664.html", platform: "有来医生 · 陈志凌", keywords: ["眩晕", "头晕"] },
+      { title: "内耳眩晕应该注意什么", url: "https://m.youlai.cn/video/article/294670.html", platform: "有来医生 · 陈志凌", keywords: ["眩晕", "头晕"] },
+    ],
+    videoPlaceholders: ["孩子鼻塞打鼾要注意什么", "突然听力下降为什么要尽快就诊"],
+    articleDetails: chenArticleDetails,
+    // 文字来自申报材料和公开资料核查（2026-11-03），未经医生核对；照片来自公开网页，授权待确认。
+    introPhoto: "/assets/doctors/portraits/chen-zhiling.jpg",
+    bio: {
+      department: "耳鼻咽喉科",
+      specialty: "耳鼻喉科综合诊疗，擅长范围含突发性耳聋、眩晕、耳石症、梅尼埃病等，并开展变应性鼻炎的中西医结合诊治。",
+      topics: ["儿童鼻炎", "腺样体", "耳鸣眩晕", "鼻窦炎"],
+      tags: ["主任医师", "杭州市中医院耳鼻咽喉科主任"],
+      career: "2005 年起在杭州市中医院从事耳鼻咽喉科临床工作。",
+      academic: [],
+      achievements: [],
+      // 医院有武林、丁桥两院区；陈主任当前坐诊院区和排班未核到，不写。
+      bookingDepartments: [{ campus: "杭州市中医院", department: "耳鼻喉科" }],
+      clinics: [{ campus: "杭州市中医院", times: ["院区和时间请以医院当日预约页面为准"] }],
+    },
+    expertSections: [],
+    materials: [
+      { title: "突发性聋诊断和治疗指南（2026 实践版）", source: "中华耳鼻咽喉头颈外科杂志，2026，61(4):331-340" },
+      { title: "梅尼埃病诊断和治疗指南（2017）", source: "中华耳鼻咽喉头颈外科杂志，2017，52(3):167-172" },
+      { title: "眩晕诊治多学科专家共识", source: "中华神经科杂志，2017，50(11):805-812" },
+      { title: "中成药治疗眩晕相关疾病临床应用指南（2022 年）", source: "中国中西医结合杂志，2023，43(10):1157-1166" },
+      { title: "良性阵发性位置性眩晕手法复位并发耳石异常移位的临床分析", source: "陈志凌，等. 中国耳鼻咽喉头颈外科，2016，23(12):691-695" },
+      { title: "变应性鼻炎的指南解读与中西医结合诊治", source: "陈志凌，杭州市中医院耳鼻咽喉科讲稿，2026 年 6 月" },
+      { title: "梅尼埃病诊疗指南解读", source: "陈志凌提供的讲解资料" },
+    ],
   },
 };
 
@@ -97,3 +133,5 @@ export const noticeLines = [
   "可用于了解健康知识、整理日常记录、准备就诊问题，不能替代面诊、诊断或处方。",
   "如需心理支持，可拨打全国统一心理援助热线 12356；如可能立即伤害自己或出现身体急症，请立即拨打 120 或前往急诊。",
 ];
+
+export const usesUnifiedTemplate = (doctor: { slug: string; builder?: unknown }) => !doctor.builder && doctorCustoms[doctor.slug]?.unifiedTemplate === true;

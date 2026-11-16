@@ -18,7 +18,7 @@ import { doctorTopics, matchesDoctorTopic, type TopicKey } from "../lib/doctorTo
 
 const knowledgeFocus: Record<string, string> = {
   "fu-junfen": "儿童糖尿病与生长发育科普",
-  "chen-zhiling": "鼻炎、听力与耳鼻喉健康科普",
+  "chen-zhiling": "耳鼻喉症状记录与就诊准备",
   "gong-wenbo": "代谢健康与中医生活调养科普",
   "chen-jinbiao": "肿瘤健康知识与康复科普",
   "wu-yuqin": "体重管理与健康生活方式科普",

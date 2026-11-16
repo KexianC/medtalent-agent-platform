@@ -48,13 +48,17 @@ export const doctorProfiles: DoctorProfile[] = [
   }),
   profile({
     slug: "chen-zhiling", name: "陈志凌", portrait: "/assets/doctors/portraits/chen-zhiling.jpg", portraitPosition: "50% 50%", hospital: "杭州市中医院", department: "耳鼻咽喉科",
-    specialty: "耳鼻喉疾病的中西医结合诊治", accent: "#477b91", accentSoft: "#eef5f8", intro: "聚焦儿童鼻炎、腺样体肥大、耳鸣眩晕及鼻窦炎，帮助患者做好症状判断与长期管理。",
-    quickQuestions: ["孩子鼻塞打鼾是腺样体肥大吗？", "过敏性鼻炎怎么减少复发？", "突然耳鸣耳闷需要马上就医吗？", "慢性鼻窦炎日常怎么护理？"],
-    topics: ["儿童鼻炎", "腺样体", "耳鸣眩晕", "鼻窦炎"], services: ["耳鼻喉症状自查", "检查报告解读", "术后康复指导", "过敏季提醒"],
+    specialty: "耳鼻喉疾病的中西医结合诊治", accent: "#3B9A70", accentSoft: "#E8F5EE", intro: "聚焦儿童鼻炎、腺样体肥大、耳鸣眩晕及鼻窦炎，帮助做好症状记录和就诊准备。",
+    quickQuestions: ["孩子反复鼻塞、打喷嚏，就诊前记什么？", "孩子睡觉打鼾、张口呼吸，需要观察什么？", "耳鸣时，哪些伴随变化需要尽快就医？", "眩晕发作后，哪些信息对医生有用？", "鼻塞流涕一直不好，就诊前准备什么？"],
+    topics: ["儿童鼻炎", "腺样体", "耳鸣眩晕", "鼻窦炎"], services: ["耳鼻喉症状整理", "检查资料整理", "就诊问题清单"],
     articles: [
-      { id: "czl-1", title: "孩子长期张口呼吸，别只当成习惯", summary: "识别鼻炎、扁桃体和腺样体问题的常见表现。", tag: "儿童鼻病", readTime: "5 分钟" },
-      { id: "czl-2", title: "突发耳聋的黄金就诊时间", summary: "突然听力下降、耳鸣或眩晕时，哪些情况不能等待。", tag: "听力", readTime: "3 分钟" },
-      { id: "czl-3", title: "鼻腔冲洗做对了吗？", summary: "盐水选择、操作姿势和使用频率一次讲清。", tag: "鼻炎", readTime: "4 分钟" },
+      { id: "czl-1", title: "孩子长期张口呼吸，别只当成习惯", summary: "就诊前可以观察哪些表现。", tag: "儿童鼻病", readTime: "2 分钟" },
+      { id: "czl-2", title: "突发性聋：为什么不要等", summary: "听力突然下降时，指南怎么说，就诊要讲什么。", tag: "听力", readTime: "3 分钟" },
+      { id: "czl-4", title: "过敏性鼻炎：家里怎么减少过敏原", summary: "尘螨、宠物、霉菌和花粉的日常做法。", tag: "鼻炎", readTime: "2 分钟" },
+      { id: "czl-5", title: "过敏性鼻炎：症状怎么记", summary: "记什么、怎么打分，方便就诊时回顾。", tag: "鼻炎", readTime: "2 分钟" },
+      { id: "czl-6", title: "眩晕发作后，记下这些信息", summary: "对医生有用的信息和需要立即求助的情况。", tag: "眩晕", readTime: "2 分钟" },
+      { id: "czl-7", title: "梅尼埃病：不发作时怎么调整生活", summary: "作息、压力和饮食方面可以做什么。", tag: "眩晕", readTime: "1 分钟" },
+      { id: "czl-3", title: "鼻腔冲洗做对了吗？", summary: "想了解鼻腔冲洗，可以先问一问。", tag: "鼻炎", readTime: "1 分钟" },
     ],
   }),
   profile({

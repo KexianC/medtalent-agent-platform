@@ -115,7 +115,7 @@ export function ConsumerAccountCard({ doctorSlug }: { doctorSlug: string }) {
   };
   return <section className="consumer-account" aria-label="微信账户与同步">
     <strong>{session.user ? '微信账户已登录' : '微信登录，记录随你走'}</strong>
-    <p>{session.user ? conflicts.length ? '其他设备也修改了记录，请选择保留哪一份。' : unsaved ? '有记录尚未同步，联网后可重试。' : '记录已同步，可在其他设备使用同一微信账号查看。' : '登录后，对话、收藏、健康记录和心理自评将保存在你的云端账户。你可在设置中关闭对话保存。'}</p>
+    <p>{session.user ? conflicts.length ? '其他设备也修改了记录，请选择保留哪一份。' : unsaved ? '有记录尚未同步，联网后可重试。' : '记录已同步，可在其他设备使用同一微信账号查看。' : doctorSlug === 'chen-zhiling' ? '登录后，对话、收藏、健康记录将保存在你的云端账户。你可在设置中关闭对话保存。' : '登录后，对话、收藏、健康记录和心理自评将保存在你的云端账户。你可在设置中关闭对话保存。'}</p>
     {!session.user ? <><button className="consumer-primary" disabled={pending || session.loginPending || session.status === 'loading'} onClick={() => void run(loginWithWechat)}>{pending ? '正在打开微信…' : session.loginPending ? '正在等待微信登录…' : '微信一键登录'}</button>
       {session.loginPending && <><p role="status">微信确认完成后会自动读取账户。科普与问答仍可继续使用。</p><button disabled={pending} onClick={() => void run(refreshConsumerSession)}>已返回，确认登录</button></>}
     </> : <div className="consumer-actions">
@@ -123,7 +123,7 @@ export function ConsumerAccountCard({ doctorSlug }: { doctorSlug: string }) {
       {importAvailable && <button disabled={pending} onClick={() => void run(importRecords)}>迁移本机记录</button>}
       <button disabled={pending} onClick={() => void run(async () => { await consumerDataStore.flush(); if (sections.some(section => ['pending', 'saving', 'offline', 'error', 'conflict'].includes(consumerDataStore.get(doctorSlug, section, null).status)) && !window.confirm('尚有未同步记录；设备无法保存缓存时，退出或关闭页面可能丢失这些修改。建议联网完成同步后再退出。仍要退出吗？')) return; await logoutConsumer(); })}>退出登录</button>
     </div>}
-    {conflicts.map(item => <div className="consumer-conflict" key={item.section}><span>记录冲突（{({ 'chat-messages': '对话', 'health-records': '健康记录', 'chat-assessments-v1': '心理自评', favorites: '收藏', 'wellness-v1': '身心记录', 'service-plans-v1': '服务计划', 'builder-assessments-v1': '健康自评' } as Record<string, string>)[item.section] || '个人设置'}）</span><button onClick={() => { if (window.confirm('使用云端版本将放弃当前设备尚未同步的这项修改，确定继续吗？')) void run(() => consumerDataStore.resolveConflict(doctorSlug, item.section, 'cloud')); }}>使用云端版本</button><button onClick={() => { if (window.confirm('使用本机版本将替换云端这项记录，确定继续吗？')) void run(() => consumerDataStore.resolveConflict(doctorSlug, item.section, 'local')); }}>保留本机版本</button></div>)}
+    {conflicts.map(item => <div className="consumer-conflict" key={item.section}><span>记录冲突（{({ 'chat-messages': '对话', 'health-records': '健康记录', 'chat-assessments-v1': doctorSlug === 'chen-zhiling' ? '自评记录' : '心理自评', favorites: '收藏', 'wellness-v1': '身心记录', 'service-plans-v1': '服务计划', 'builder-assessments-v1': '健康自评' } as Record<string, string>)[item.section] || '个人设置'}）</span><button onClick={() => { if (window.confirm('使用云端版本将放弃当前设备尚未同步的这项修改，确定继续吗？')) void run(() => consumerDataStore.resolveConflict(doctorSlug, item.section, 'cloud')); }}>使用云端版本</button><button onClick={() => { if (window.confirm('使用本机版本将替换云端这项记录，确定继续吗？')) void run(() => consumerDataStore.resolveConflict(doctorSlug, item.section, 'local')); }}>保留本机版本</button></div>)}
     {(notice || session.error) && <p role="status">{notice || session.error}</p>}
     {session.user && [...new Set(snapshots.map(item => item.error).filter(Boolean))].map(error => <p role="status" key={error}>{error}</p>)}
     {!session.user && <small>请在 Medtalent 微信小程序内登录。本机游客记录由你选择是否迁移。</small>}

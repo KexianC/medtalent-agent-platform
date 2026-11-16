@@ -77,3 +77,29 @@ export function buildTangExtraLines(relaxDays, assessments, { today, days = 30 }
   }
   return lines;
 }
+
+// Specialty records use configured fields. Same rule: numbers only, no interpretation.
+export function buildFieldVisitSummary(records, { today, fields, days = 30, questions = '' }) {
+  const from = shiftDate(today, days - 1);
+  const inRange = records
+    .filter((record) => dateOf(record) >= from && dateOf(record) <= today)
+    .filter((record) => record.note || fields.some((field) => typeof record.measurements?.[field.key] === 'number'))
+    .sort((a, b) => dateOf(b).localeCompare(dateOf(a)));
+  if (!inRange.length && !questions.trim()) return null;
+
+  const format = (value, field) => `${Number.isInteger(value) ? value : value.toFixed(1)}${field.unit ? ` ${field.unit}` : ''}`;
+  const lines = ['复诊摘要（本人自填，未经医生核实）', `统计范围：${from} 至 ${today}，有记录 ${new Set(inRange.map(dateOf)).size} 天`, '', '平均值（只算填写过的）：'];
+  for (const field of fields) {
+    const values = inRange.map((record) => record.measurements?.[field.key]).filter((value) => typeof value === 'number');
+    lines.push(`- ${field.label}：${values.length ? format(values.reduce((sum, value) => sum + value, 0) / values.length, field) : '未填写'}`);
+  }
+  lines.push('', '最近记录：');
+  for (const record of inRange.slice(0, 7)) {
+    const parts = fields.filter((field) => typeof record.measurements?.[field.key] === 'number').map((field) => `${field.label} ${format(record.measurements[field.key], field)}`);
+    lines.push(`- ${dateOf(record)}：${parts.join('，') || '无数值'}${record.note ? `；备注：${record.note}` : ''}`);
+  }
+  if (!inRange.length) lines.push('- 暂无');
+  if (questions.trim()) lines.push('', '想问医生：', questions.trim());
+  lines.push('', '本摘要由自填记录自动整理，不是诊断，也不代表疗效判断。');
+  return lines.join('\n');
+}

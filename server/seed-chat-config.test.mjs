@@ -159,7 +159,7 @@ test("all eleven seeded agents support published normal and streaming chat with 
     });
   }
   assert.equal(providerRequests.length, 22);
-  assert.equal(classificationRequests.length, 22, "Every doctor classifies once before each normal/streaming reply");
+  assert.equal(classificationRequests.length, doctorProfiles.length * 2, "every doctor classifies once before each normal/streaming reply");
   const usage = platform.database.sqlite.prepare("SELECT agent_slug,model,success FROM usage ORDER BY rowid").all();
   assert.equal(usage.length, 22);
   for (const slug of expectedSlugs) {

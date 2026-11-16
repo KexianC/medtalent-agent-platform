@@ -1,3 +1,4 @@
+import { usesUnifiedTemplate } from '../features/services/doctorCustom.ts';
 export { getBuilderComponents } from './agentBuilder.ts';
 import type { DoctorProfile } from '../data/doctorProfiles';
 import type { SpecialtyRecordConfig } from './specialtyRecords';
@@ -6,7 +7,7 @@ export type BuilderDoctor = Pick<DoctorProfile, 'slug'> & { builder?: AgentBuild
 export const componentEnabled = (doctor: BuilderDoctor, id: BuilderComponentId) => doctor.builder ? doctor.builder.components.some(item => item.id === id && item.enabled) : true;
 export const usesWellness = (doctor: BuilderDoctor) => doctor.builder ? componentEnabled(doctor, 'wellness') : doctor.slug === 'yu-wen';
 export const usesTangRecords = (doctor: BuilderDoctor) => !doctor.builder && doctor.slug === 'tang-jinsong';
-export const voiceEnabled = (doctor: BuilderDoctor) => doctor.builder ? componentEnabled(doctor, 'voice') && doctor.builder.voice.enabled : doctor.slug === 'tang-jinsong';
+export const voiceEnabled = (doctor: BuilderDoctor) => doctor.builder ? componentEnabled(doctor, 'voice') && doctor.builder.voice.enabled : usesUnifiedTemplate(doctor);
 export const healthContextEnabled = (doctor: BuilderDoctor) => doctor.healthContextEnabled !== false && (doctor.builder ? doctor.builder.healthContext !== false && componentEnabled(doctor, 'records') : doctor.slug === 'tang-jinsong');
 export function configuredRecordConfig(doctor: BuilderDoctor, fallback: SpecialtyRecordConfig): SpecialtyRecordConfig {
   if (!doctor.builder) return fallback;
