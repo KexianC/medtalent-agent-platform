@@ -1,4 +1,4 @@
-import { getDoctorConfig } from "../doctors/index";
+import { resolveDoctorConfig } from "../doctors/index";
 import {
   ArrowRight,
   Baby,
@@ -42,7 +42,7 @@ export default function DoctorHub() {
     const normalizedQuery = query.trim().toLocaleLowerCase("zh-CN");
 
     return doctors.filter((doctor) => {
-      const searchable = [doctor.name, doctor.department, doctor.specialty, (getDoctorConfig(doctor.slug)?.home.knowledgeFocus ?? knowledgeFocus[doctor.slug]), ...doctor.topics]
+      const searchable = [doctor.name, doctor.department, doctor.specialty, (resolveDoctorConfig(doctor)?.home.knowledgeFocus ?? knowledgeFocus[doctor.slug]), ...doctor.topics]
         .join(" ")
         .toLocaleLowerCase("zh-CN");
       const matchesQuery = !normalizedQuery || searchable.includes(normalizedQuery);
@@ -186,7 +186,7 @@ export default function DoctorHub() {
                   <span className="hub-doctor-department">{doctor.department}</span>
                   <div className="hub-doctor-name"><h3>{doctor.name}</h3><span className="hub-doctor-department-inline">{doctor.department}</span></div>
                   {doctor.hospital && <p className="hub-doctor-hospital">{doctor.hospital}</p>}
-                  <p className="hub-doctor-focus">{(getDoctorConfig(doctor.slug)?.home.knowledgeFocus ?? knowledgeFocus[doctor.slug]) || doctor.specialty || doctor.intro}</p>
+                  <p className="hub-doctor-focus">{(resolveDoctorConfig(doctor)?.home.knowledgeFocus ?? knowledgeFocus[doctor.slug]) || doctor.specialty || doctor.intro}</p>
                 </div>
                 <Link to={`/d/${doctor.slug}`} className="hub-doctor-link" aria-label={`进入${doctor.name}的健康科普智能体`}>
                   <span className="hub-desktop-title">进入科普智能体</span><span className="hub-mobile-title">进入智能体</span> <ArrowRight size={15} aria-hidden="true" />

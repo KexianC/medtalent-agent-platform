@@ -32,7 +32,7 @@ export default function SpecialtyManagePanel({ doctor, onAsk }: Props) {
   const writable = canWriteBuilderData(doctor, "records");
   const today = useWellnessDay();
   const previousDay = useRef(today);
-  const config = useMemo(() => configuredRecordConfig(doctor, getSpecialtyRecordConfig(doctor.slug)), [doctor]);
+  const config = useMemo(() => configuredRecordConfig(doctor, getSpecialtyRecordConfig(doctor)), [doctor]);
   const [storedRecords, setRecords, persistence] = useDoctorLocalState<DoctorHealthRecord[]>(doctor.slug, "health-records", []);
   const cloudPending = ['pending', 'saving', 'loading'].includes(persistence.cloudStatus || '');
   const storageNotice = persistence.storage === 'cloud'

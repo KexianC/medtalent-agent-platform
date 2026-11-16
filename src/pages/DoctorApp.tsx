@@ -1,4 +1,4 @@
-import { configForDoctor, doctorModule } from "../doctors/index";
+import { resolveDoctorConfig, doctorModule } from "../doctors/index";
 import { tangReferenceView, TANG_TRANSCRIPT_NOTE } from '../features/tang-home/referenceNames.mjs';
 import { TangConsent } from '../features/tang-home/TangHome';
 import { useUiPrivacy } from '../features/tang-home/useUiPrivacy';
@@ -125,7 +125,7 @@ import { DoctorVideoItem, EducationArticle, SpecialtyVisitSummary, TangEducation
 import { DEMO_PREFIX, demoReply } from "../features/tang-home/demoReplies.mjs";
 import { chenDemoReply } from "../features/services/chenEducation";
 import { DoctorMaterials } from "../features/services/DoctorMaterials";
-import { doctorCustoms, enabledGroups, noticeLines, usesUnifiedTemplate } from "../features/services/doctorCustom";
+import { getDoctorCustom, enabledGroups, noticeLines, usesUnifiedTemplate } from "../features/services/doctorCustom";
 import { matchDoctorVideos } from "../features/services/videoMatch.mjs";
 import { emptyServicePlans, normalizeServicePlans, saveServicePlan } from "../lib/servicePlans";
 import { buildSpecialtyStats, getSpecialtyRecordConfig } from "../lib/specialtyRecords";
@@ -451,7 +451,7 @@ function AssessmentSheet({
                 value={note}
                 maxLength={300}
                 onChange={(event) => setNote(event.target.value)}
-                placeholder={configForDoctor(doctor)?.records.placeholder ?? "可补充时间、程度、变化或其他想记录的信息"}
+                placeholder={resolveDoctorConfig(doctor)?.records.placeholder ?? "可补充时间、程度、变化或其他想记录的信息"}
               />
               <small>{note.length} / 300</small>
             </label>
@@ -532,6 +532,7 @@ function HomePanel({
   onWellnessOpen?: (view: WellnessView) => void;
   onManage: () => void;
 }) {
+  const custom = getDoctorCustom(doctor);
   const reduced = useReducedMotion();
   const [assessmentOpen, setAssessmentOpen] = useState(false);
   const [recordSection, setRecordSection] = useState<TangRecordSection>("all");
@@ -543,15 +544,15 @@ function HomePanel({
   const [dailyTasks, setDailyTasks] = useDoctorLocalState<DoctorDailyTasks>(doctor.slug, "health-daily-tasks", createDailyTasks(experience.steps.length));
   const [privacy] = useUiPrivacy(doctor.slug);
   const HeroIcon = journeyIcons[experience.heroIcon];
-  const usesGrowthArtwork = configForDoctor(doctor)?.theme.heroArtwork === "growth" && experience.primaryTitle.includes("生长");
+  const usesGrowthArtwork = resolveDoctorConfig(doctor)?.theme.heroArtwork === "growth" && experience.primaryTitle.includes("生长");
   const tasks = normalizeDailyTasks(dailyTasks, experience.steps.length);
-  const sortedRecords = useMemo(() => sortHealthRecords(records, new Date(), 370, doctor.builder ? configuredRecordConfig(doctor, getSpecialtyRecordConfig(doctor.slug)) : undefined), [records, doctor]);
+  const sortedRecords = useMemo(() => sortHealthRecords(records, new Date(), 370, doctor.builder ? configuredRecordConfig(doctor, getSpecialtyRecordConfig(doctor)) : undefined), [records, doctor]);
   const todayHomeRecord = records.find((record) => record.source === "home" && healthRecordDateKey(record) === today);
   const todayTangRecord = usesTangRecords(doctor)
     ? mergeTangDailyRecords(sortedRecords, localDateKey())
     : undefined;
   const todayTangMetrics = usesTangRecords(doctor) ? buildHealthTrend(records, 1)[0]?.metrics : undefined;
-  const specialtyConfig = configuredRecordConfig(doctor, getSpecialtyRecordConfig(doctor.slug));
+  const specialtyConfig = configuredRecordConfig(doctor, getSpecialtyRecordConfig(doctor));
   const isSpecialty = Boolean(doctor.builder) || !["sleep-mood-function", "legacy"].includes(doctorModule(doctor, "records")?.variant || "standard");
   const specialtyToday = buildSpecialtyStats(records, specialtyConfig, 1).trend[0]?.measurements;
   const homeSteps = isSpecialty ? specialtyConfig.fields.slice(0, 3).map((field) => ({
@@ -559,7 +560,7 @@ function HomePanel({
     title: field.label,
     description: specialtyToday?.[field.key] === undefined ? field.hint || `按实际情况填写${field.unit ? `，单位：${field.unit}` : ""}`
       : `今日已填：${field.key === "menstrualStatus" ? (specialtyToday[field.key] === 1 ? "正在经期" : "不在经期") : `${specialtyToday[field.key]} ${field.unit}`}`,
-  })) : isTang ? experience.steps.map((step, index) => ({ ...step, description: configForDoctor(doctor)?.records.steps[index] || step.description })) : experience.steps;
+  })) : isTang ? experience.steps.map((step, index) => ({ ...step, description: resolveDoctorConfig(doctor)?.records.steps[index] || step.description })) : experience.steps;
   const displayedCompleted = usesTangRecords(doctor) ? [
     todayTangMetrics?.sleepDurationMinutes !== undefined || todayTangMetrics?.sleepLatencyMinutes !== undefined || todayTangMetrics?.nightAwakenings !== undefined,
     todayTangMetrics?.moodScore !== undefined || todayTangMetrics?.anxietyScore !== undefined,
@@ -619,14 +620,14 @@ function HomePanel({
     {componentEnabled(doctor, "content") && <PublishedContentSection content={doctor.content} onAsk={onAsk} />}
   </>;
 
-  const tangBio = unified ? doctorCustoms[doctor.slug]?.bio : undefined;
+  const tangBio = unified ? custom?.bio : undefined;
 
   return (
     <div className={`journey-home${unified ? " journey-tang-home" : ""}`}>
       <section className="journey-hero">
         <div className="journey-topbar">
           <div className="journey-brandline"><span><BabyIcon size={17} weight="duotone" /></span><b>{experience.tagline}</b></div>
-          {(configForDoctor(doctor)?.home.showNotice ?? true) && <div className="journey-notice-wrap">
+          {(resolveDoctorConfig(doctor)?.home.showNotice ?? true) && <div className="journey-notice-wrap">
             <button className="journey-icon-button" onClick={() => setNoticeOpen((value) => !value)} aria-label="查看提醒" aria-expanded={noticeOpen}>
               <BellSimpleIcon size={20} weight="regular" />
               {privacy.reminders && <i />}
@@ -647,9 +648,9 @@ function HomePanel({
             <span className="journey-eyebrow">{experience.eyebrow}</span>
             <div className="journey-name-row"><h1>{doctor.name}</h1><span>{tangBio?.department ?? doctor.department}</span>{onExpert && !tangBio && <button type="button" className="tang-expert-link" onClick={onExpert}>专家介绍 ›</button>}</div>
             <p>{doctor.hospital}</p>
-            <h2>{configForDoctor(doctor)?.home.heroTitle ?? doctor.specialty}</h2>
+            <h2>{resolveDoctorConfig(doctor)?.home.heroTitle ?? doctor.specialty}</h2>
           </div>
-          {tangBio && doctorCustoms[doctor.slug].introPhoto ? <div className="journey-hero-art is-tang-photo"><img src={doctorCustoms[doctor.slug].introPhoto} alt={`${doctor.name}医生`} /><b aria-hidden="true">AI</b></div> : <div className={`journey-hero-art ${usesGrowthArtwork ? "has-image" : ""}`} aria-hidden="true">
+          {tangBio && custom!.introPhoto ? <div className="journey-hero-art is-tang-photo"><img src={custom!.introPhoto} alt={`${doctor.name}医生`} /><b aria-hidden="true">AI</b></div> : <div className={`journey-hero-art ${usesGrowthArtwork ? "has-image" : ""}`} aria-hidden="true">
             {usesGrowthArtwork ? (
               <img src="/assets/doctors/fu-growth-hero.png" alt="" />
             ) : (
@@ -660,16 +661,16 @@ function HomePanel({
         <div className="journey-specialty-tags">
           {(tangBio ? tangBio.tags : doctor.topics.slice(0, 3)).map((topic) => <span key={topic}>{topic}</span>)}
         </div>
-        {configForDoctor(doctor)?.home.showStartCard && <div className="journey-tang-start">
+        {resolveDoctorConfig(doctor)?.home.showStartCard && <div className="journey-tang-start">
           <button className="journey-primary-button" onClick={() => onAsk()}><ChatCircleDotsIcon size={20} weight="fill" /> 开始对话 <CaretRightIcon size={18} /></button>
-          <p>{configForDoctor(doctor)?.home.startHint ?? doctor.intro}</p>
+          <p>{resolveDoctorConfig(doctor)?.home.startHint ?? doctor.intro}</p>
         </div>}
       </section>
 
       {unified && <>
-        {tangBio ? <TangDoctorCard bio={tangBio} onTopic={topic => onAsk(`我想了解${topic}`)} onAll={() => onExpert?.()} /> : <section className="tang-home-intro" aria-label="医生介绍">{doctorCustoms[doctor.slug]?.introPhoto && <img src={doctorCustoms[doctor.slug].introPhoto} alt={`${doctor.name}医生`} />}<h2>{doctor.name}医生介绍</h2><p>{doctor.title}</p><h3>专业擅长</h3><p>{doctor.specialty}</p>{doctorCustoms[doctor.slug]?.expertSections.map(section => <div key={section.title}><h3>{section.title}</h3><p>{section.body}</p></div>)}<small>信息仅用于健康科普与就医准备，不替代医生诊断。</small></section>}
-        {Boolean(doctorCustoms[doctor.slug]?.videos.length || doctorCustoms[doctor.slug]?.videoPlaceholders?.length) && <section className="tang-home-videos" aria-label="科普视频"><h2>科普视频</h2>
-          {(doctorCustoms[doctor.slug]?.videos || []).length ? doctorCustoms[doctor.slug].videos.map(video => <DoctorVideoItem key={video.title} video={video} iconSize={34} linkSuffix=" · 打开视频" />) : <TangVideoPlaceholders titles={doctorCustoms[doctor.slug]?.videoPlaceholders || []} />}
+        {tangBio ? <TangDoctorCard bio={tangBio} onTopic={topic => onAsk(`我想了解${topic}`)} onAll={() => onExpert?.()} /> : <section className="tang-home-intro" aria-label="医生介绍">{custom?.introPhoto && <img src={custom!.introPhoto} alt={`${doctor.name}医生`} />}<h2>{doctor.name}医生介绍</h2><p>{doctor.title}</p><h3>专业擅长</h3><p>{doctor.specialty}</p>{custom?.expertSections.map(section => <div key={section.title}><h3>{section.title}</h3><p>{section.body}</p></div>)}<small>信息仅用于健康科普与就医准备，不替代医生诊断。</small></section>}
+        {Boolean(custom?.videos.length || custom?.videoPlaceholders?.length) && <section className="tang-home-videos" aria-label="科普视频"><h2>科普视频</h2>
+          {(custom?.videos || []).length ? custom!.videos.map(video => <DoctorVideoItem key={video.title} video={video} iconSize={34} linkSuffix=" · 打开视频" />) : <TangVideoPlaceholders titles={custom?.videoPlaceholders || []} />}
         </section>}
         {doctor.articles.length > 0 && <section className="tang-home-science" aria-label="健康科普"><h2>科普文章</h2>
           {doctor.articles.slice(0, 3).map(article => <button key={article.id} type="button" onClick={() => onAsk(article.title)}><b>{article.title}</b><small>{article.summary}</small></button>)}
@@ -721,9 +722,9 @@ function HomePanel({
         </div>
       </motion.section>}
 
-      {!doctor.builder && (configForDoctor(doctor)?.home.resourcesCollapsed ? <details className="journey-tang-disclosure journey-tang-resources"><summary>近期关注 <CaretRightIcon size={18} /></summary>{homeResources}</details> : homeResources)}
+      {!doctor.builder && (resolveDoctorConfig(doctor)?.home.resourcesCollapsed ? <details className="journey-tang-disclosure journey-tang-resources"><summary>近期关注 <CaretRightIcon size={18} /></summary>{homeResources}</details> : homeResources)}
 
-      {configForDoctor(doctor)?.home.showExpertNote === false ? null : <section className="journey-expert-note">
+      {resolveDoctorConfig(doctor)?.home.showExpertNote === false ? null : <section className="journey-expert-note">
         <span>{doctor.name.slice(0, 1)}</span>
         <div><b>{doctor.name}{doctorExperiences[doctor.slug] ? "医生智能体" : "智能体"}</b><p>{doctor.intro}</p></div>
         <button onClick={() => onAsk()}>立即提问</button>
@@ -804,12 +805,13 @@ function AskPanel({
   initialAutoSend: boolean;
   onConsumeInitialQuestion: () => void;
 }) {
+  const custom = getDoctorCustom(doctor);
   const preview = useDoctorPreview();
   const templatePreview = useDoctorTemplatePreview();
   const greeting = useMemo<DoctorChatMessage>(() => ({
     id: `greeting-${doctor.slug}`,
     role: "assistant",
-    text: (configForDoctor(doctor)?.chat.showAiLabel ? configForDoctor(doctor)!.chat.aiLabel + "\n" : "") + (doctor.welcomeMessage || configForDoctor(doctor)?.chat.welcomeMessage
+    text: (resolveDoctorConfig(doctor)?.chat.showAiLabel ? resolveDoctorConfig(doctor)!.chat.aiLabel + "\n" : "") + (doctor.welcomeMessage || resolveDoctorConfig(doctor)?.chat.welcomeMessage
       || `您好，这里是${doctor.name}的健康问答。我可以围绕${doctor.specialty || "日常健康知识"}提供健康科普和就医准备建议。我的回复不能替代医生面诊、诊断或处方。`),
     createdAt: new Date().toISOString(),
   }), [doctor]);
@@ -820,7 +822,7 @@ function AskPanel({
   const [messages, setMessages] = useDoctorLocalState<DoctorChatMessage[]>(doctor.slug, "chat-messages", [greeting], privacy.saveChat);
   const [favorites, setFavorites] = useDoctorLocalState<DoctorFavorite[]>(doctor.slug, "favorites", []);
   const [healthRecords] = useDoctorLocalState<DoctorHealthRecord[]>(doctor.slug, "health-records", []);
-  const healthContext = useMemo(() => buildHealthContextPayload(healthRecords, new Date(), doctor.builder ? configuredRecordConfig(doctor, getSpecialtyRecordConfig(doctor.slug)) : undefined), [healthRecords, doctor]);
+  const healthContext = useMemo(() => buildHealthContextPayload(healthRecords, new Date(), doctor.builder ? configuredRecordConfig(doctor, getSpecialtyRecordConfig(doctor)) : undefined), [healthRecords, doctor]);
   const canShareHealthRecords = healthContextEnabled(doctor) && healthContext.records.length > 0;
 
   useEffect(() => setMessages(stripStoredCitationDetails), [setMessages]);
@@ -1361,8 +1363,8 @@ function AskPanel({
       if (shouldSpeak) {
         stopPlayback();
       }
-      if (configForDoctor(doctor)?.chat.demoReplyWhenModelMissing && error instanceof Error && error.message.includes("尚未配置")) {
-        const demoText = configForDoctor(doctor)?.chat.demoReplyStyle === "mental" ? demoReply(question) : chenDemoReply(question);
+      if (resolveDoctorConfig(doctor)?.chat.demoReplyWhenModelMissing && error instanceof Error && error.message.includes("尚未配置")) {
+        const demoText = resolveDoctorConfig(doctor)?.chat.demoReplyStyle === "mental" ? demoReply(question) : chenDemoReply(question);
         setMessages((current) => [...current, { id: assistantMessageId, role: "assistant" as const, text: demoText, createdAt: new Date().toISOString() }].slice(-100));
         return demoText;
       }
@@ -1613,7 +1615,7 @@ function AskPanel({
     <div className={`journey-chat ${hasVoiceConversation ? "tang-chat" : ""}`}>
       <header className="journey-inner-header">
         <DoctorPhoto doctor={doctor} className="journey-mini-avatar" />
-        <div className="journey-chat-identity">{configForDoctor(doctor)?.chat.showTagline !== false && <span>{experience.tagline}</span>}<h1>{configForDoctor(doctor)?.chat.title ?? doctor.name}</h1><p><i /> 健康科普智能助手</p></div>
+        <div className="journey-chat-identity">{resolveDoctorConfig(doctor)?.chat.showTagline !== false && <span>{experience.tagline}</span>}<h1>{resolveDoctorConfig(doctor)?.chat.title ?? doctor.name}</h1><p><i /> 健康科普智能助手</p></div>
         <div className="journey-chat-tools">
           {hasVoiceConversation && <button className="journey-voice-entry" onClick={() => { setPrivacy((current) => ({ ...current, voicePlayback: !current.voicePlayback })); if (privacy.voicePlayback) stopSpeaking(); else { void ensureSpeechAudioContext().catch(() => undefined); setVoiceError(""); } }} aria-label="语音回复自动播报" aria-pressed={privacy.voicePlayback} title="控制后续回复的自动播报，已有回复可点击喇叭朗读"><SpeakerHighIcon size={16} /> 自动播报{privacy.voicePlayback ? "开" : "关"}</button>}
           <button className="journey-clear-chat" onClick={clearChat} aria-label="清空对话" disabled={messages.length <= 1 && !busy && !voiceCapturing}><TrashIcon size={17} /></button>
@@ -1644,7 +1646,7 @@ function AskPanel({
         <div className="journey-message-list" ref={messageContent}>
         {usesTangRecords(doctor) && hasVoiceConversation && <TangChatGuidance doctorSlug={doctor.slug} disabled={interactionLocked} onSend={async (text) => Boolean(await send(text))} />}
         <details className="journey-quick-questions"><summary>推荐问题</summary><div className="journey-suggestions">
-          {(configForDoctor(doctor)?.chat.quickQuestions ?? doctor.quickQuestions).slice(0, usesTangRecords(doctor) ? 3 : 5).map((question) => <button key={question} onClick={() => send(question)} disabled={interactionLocked}>{question}</button>)}
+          {(resolveDoctorConfig(doctor)?.chat.quickQuestions ?? doctor.quickQuestions).slice(0, usesTangRecords(doctor) ? 3 : 5).map((question) => <button key={question} onClick={() => send(question)} disabled={interactionLocked}>{question}</button>)}
         </div></details>
         {messages.map((message) => (
           <motion.div className={`journey-bubble-row ${message.role} ${message.error ? "is-error" : ""}`} key={message.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}>
@@ -1652,17 +1654,17 @@ function AskPanel({
             <div className="journey-bubble-content">
               {message.role === "assistant" && !message.error && <CrisisHelpCard safety={message} reply={message.text} />}
               {!(message.role === "assistant" && !message.error && message.crisis && message.crisisCategory === "uncertain") && <div className="journey-message-text">{message.role === "user" && message.inputMode === "voice" ? <><span className="tang-voice-message"><WaveSineIcon size={22} /> 语音消息{message.voiceDurationSeconds ? (" · " + message.voiceDurationSeconds + " 秒") : ""}</span><details><summary>查看识别内容</summary>{formatMedicalText(message.text)}</details></> : formatMedicalText(chatMessageBody(message))}</div>}
-              {message.role === "assistant" && !message.error && !message.crisis && <MessageCitations tang={configForDoctor(doctor)?.chat.citations.style === "tang"} hideEmpty={configForDoctor(doctor)?.chat.citations.hideWhenEmpty} enabled={doctor.citationsEnabled !== false && configForDoctor(doctor)?.chat.citations.enabled !== false} message={message} showDisclaimer={message.id !== greeting.id} />}
+              {message.role === "assistant" && !message.error && !message.crisis && <MessageCitations tang={resolveDoctorConfig(doctor)?.chat.citations.style === "tang"} hideEmpty={resolveDoctorConfig(doctor)?.chat.citations.hideWhenEmpty} enabled={doctor.citationsEnabled !== false && resolveDoctorConfig(doctor)?.chat.citations.enabled !== false} message={message} showDisclaimer={message.id !== greeting.id} />}
               {message.role === "assistant" && !message.error && message.id !== greeting.id && <AnswerFeedback doctorSlug={doctor.slug} messageId={message.id} answer={message.text} question={messages.slice(0,messages.indexOf(message)).reverse().find(item=>item.role==="user")?.text||""}/> }
-              {message.role === "assistant" && !message.error && !message.crisis && !message.crisisCategory && message.id !== greeting.id && <div className="tang-reply-videos">{matchDoctorVideos(messages.slice(0, messages.indexOf(message)).reverse().find(item => item.role === "user")?.text, doctorCustoms[doctor.slug]?.videos).map((video: { title: string; url: string; platform: string }) => <a key={video.url} href={video.url} target="_blank" rel="noopener noreferrer">{doctor.name}医生的科普视频：{video.title}<small>{video.platform}</small></a>)}</div>}
-              {configForDoctor(doctor)?.chat.replyFooter && message.role === "assistant" && !message.error && <div className="tang-reply-footer"><span>{message.crisis ? "安全提示，不是医生本人回复" : message.text.startsWith(DEMO_PREFIX) ? "演示内容，未接模型，仅供演示" : "内容由大模型生成，仅供健康科普参考"}</span><button onClick={() => copyMessage(message)}>{copiedId === message.id ? "已复制" : "复制"}</button></div>}
+              {message.role === "assistant" && !message.error && !message.crisis && !message.crisisCategory && message.id !== greeting.id && <div className="tang-reply-videos">{matchDoctorVideos(messages.slice(0, messages.indexOf(message)).reverse().find(item => item.role === "user")?.text, custom?.videos).map((video: { title: string; url: string; platform: string }) => <a key={video.url} href={video.url} target="_blank" rel="noopener noreferrer">{doctor.name}医生的科普视频：{video.title}<small>{video.platform}</small></a>)}</div>}
+              {resolveDoctorConfig(doctor)?.chat.replyFooter && message.role === "assistant" && !message.error && <div className="tang-reply-footer"><span>{message.crisis ? "安全提示，不是医生本人回复" : message.text.startsWith(DEMO_PREFIX) ? "演示内容，未接模型，仅供演示" : "内容由大模型生成，仅供健康科普参考"}</span><button onClick={() => copyMessage(message)}>{copiedId === message.id ? "已复制" : "复制"}</button></div>}
               <div className="journey-message-actions">
                 {message.role === "assistant" && !message.error && !templatePreview && (!doctor.builder || voiceEnabled(doctor)) && <button onClick={() => void readMessage(message)} aria-label={playingMessageId === message.id ? "停止朗读" : "朗读回复"} disabled={interactionLocked}>{playingMessageId === message.id ? <StopIcon size={14} /> : <SpeakerHighIcon size={14} />}</button>}
                 {message.role === "assistant" && !message.error && <button className={favorites.some((item) => item.id === message.id) ? "is-active" : ""} onClick={() => toggleFavorite(message)} aria-label="收藏回复"><BookmarkSimpleIcon size={14} weight={favorites.some((item) => item.id === message.id) ? "fill" : "regular"} /></button>}
-                {(!configForDoctor(doctor)?.chat.replyFooter || message.role !== "assistant" || message.error) && <button onClick={() => copyMessage(message)} aria-label="复制内容"><CopyIcon size={14} />{copiedId === message.id && <span>已复制</span>}</button>}
+                {(!resolveDoctorConfig(doctor)?.chat.replyFooter || message.role !== "assistant" || message.error) && <button onClick={() => copyMessage(message)} aria-label="复制内容"><CopyIcon size={14} />{copiedId === message.id && <span>已复制</span>}</button>}
                 {message.error && message.retryText && <button className="retry" disabled={interactionLocked} onClick={() => void send(message.retryText, message.inputMode === "voice", message.id)}><ArrowClockwiseIcon size={14} />重试</button>}
               </div>
-              {configForDoctor(doctor)?.chat.replyFooter && message.role === "assistant" && !message.error && (message.crisis
+              {resolveDoctorConfig(doctor)?.chat.replyFooter && message.role === "assistant" && !message.error && (message.crisis
                 ? <div className="tang-reply-human">紧急情况请直接拨打 120 或前往急诊，不要等待线上回复。</div>
                 : <div className="tang-reply-follow">{doctor.quickQuestions.slice(0, 3).map(question => <button key={question} disabled={interactionLocked} onClick={() => void send(question)}>{question}</button>)}</div>)}
             </div>
@@ -1865,7 +1867,7 @@ function TangManagePanel({ doctor, onAsk, onPrepare }: { doctor: DoctorProfile; 
   const trend = useMemo(() => buildHealthTrend(records, trendDays), [records, trendDays]);
   const stats = useMemo(() => calculateHealthStats(records, trendDays), [records, trendDays]);
   const recordedDays = useMemo(() => recentRecordDayCount(records, trendDays), [records, trendDays]);
-  const sortedRecords = useMemo(() => sortHealthRecords(records, new Date(), 370, doctor.builder ? configuredRecordConfig(doctor, getSpecialtyRecordConfig(doctor.slug)) : undefined), [records, doctor]);
+  const sortedRecords = useMemo(() => sortHealthRecords(records, new Date(), 370, doctor.builder ? configuredRecordConfig(doctor, getSpecialtyRecordConfig(doctor)) : undefined), [records, doctor]);
   const recentHealthContext = useMemo(() => buildHealthContextPayload(sortedRecords), [sortedRecords]);
   const selectedTrend = trendMetricOptions.find((item) => item.key === trendMetric) ?? trendMetricOptions[0];
   const structuredRecords = sortedRecords.filter((record) => record.metrics && Object.values(record.metrics).some((value) => value !== undefined));
@@ -2076,7 +2078,7 @@ function TangManagePanel({ doctor, onAsk, onPrepare }: { doctor: DoctorProfile; 
 
       <AnimatePresence>
         {historyOpen && <FeatureSheet title="健康记录" eyebrow="PRIVATE HEALTH LOG" onClose={() => setHistoryOpen(false)}>
-          {sortedRecords.length ? <><div className="journey-record-list journey-structured-records">{sortedRecords.map((record) => <article key={record.id}><span>{healthRecordDateKey(record)} · {new Date(record.updatedAt || record.createdAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })} · {record.source === "home" ? "首页状态记录" : "管理记录"}</span><b>{formatHealthMetricsSummary(record, doctor.builder ? configuredRecordConfig(doctor, getSpecialtyRecordConfig(doctor.slug)) : undefined) || record.completedTitles.join("、") || "自我记录"}</b>{record.note && <p>{record.note}</p>}{record.completedTitles.length > 0 && <small>已记录：{record.completedTitles.join("、")}</small>}<div className="journey-list-actions"><button onClick={() => editRecord(record)}><NotePencilIcon size={15} />编辑</button><button onClick={askWithRecords}><ChatCircleDotsIcon size={15} />{configForDoctor(doctor)!.records.askWithRecords!.label}</button><button className="danger" onClick={() => deleteRecord(record.id)} aria-label={`删除 ${healthRecordDateKey(record)} 的健康记录`}><TrashIcon size={15} />删除</button></div></article>)}</div><button className="journey-danger-button" onClick={clearRecords}><TrashIcon size={16} /> 清空全部健康记录</button></> : <div className="journey-empty-state"><ClipboardTextIcon size={34} weight="duotone" /><b>暂无健康记录</b><p>关闭本页后填写第一条睡眠或情绪记录。</p></div>}
+          {sortedRecords.length ? <><div className="journey-record-list journey-structured-records">{sortedRecords.map((record) => <article key={record.id}><span>{healthRecordDateKey(record)} · {new Date(record.updatedAt || record.createdAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })} · {record.source === "home" ? "首页状态记录" : "管理记录"}</span><b>{formatHealthMetricsSummary(record, doctor.builder ? configuredRecordConfig(doctor, getSpecialtyRecordConfig(doctor)) : undefined) || record.completedTitles.join("、") || "自我记录"}</b>{record.note && <p>{record.note}</p>}{record.completedTitles.length > 0 && <small>已记录：{record.completedTitles.join("、")}</small>}<div className="journey-list-actions"><button onClick={() => editRecord(record)}><NotePencilIcon size={15} />编辑</button><button onClick={askWithRecords}><ChatCircleDotsIcon size={15} />{resolveDoctorConfig(doctor)!.records.askWithRecords!.label}</button><button className="danger" onClick={() => deleteRecord(record.id)} aria-label={`删除 ${healthRecordDateKey(record)} 的健康记录`}><TrashIcon size={15} />删除</button></div></article>)}</div><button className="journey-danger-button" onClick={clearRecords}><TrashIcon size={16} /> 清空全部健康记录</button></> : <div className="journey-empty-state"><ClipboardTextIcon size={34} weight="duotone" /><b>暂无健康记录</b><p>关闭本页后填写第一条睡眠或情绪记录。</p></div>}
           <p className="journey-sheet-disclaimer"><ShieldCheckIcon size={14} /> 游客记录保存在本机，微信登录后保存到账户；仅在你主动选择时向智能体发送摘要。</p>
         </FeatureSheet>}
       </AnimatePresence>
@@ -2124,12 +2126,13 @@ function TangPreparation({ doctor, onAsk, onManage, onDirtyChange }: { doctor: P
   const plan = normalizeServicePlans(stored).plans.find(item => item.service === service);
   const [records] = useDoctorLocalState<DoctorHealthRecord[]>(doctor.slug, "health-records", []);
   return <>
-    {doctorModule(doctor, "visitSummary")?.enabled ? <TangVisitSummary doctorSlug={doctor.slug} days={doctorModule(doctor, "visitSummary")?.days} records={records} questions={plan?.note || ""} /> : usesUnifiedTemplate(doctor) && <SpecialtyVisitSummary records={records} questions={plan?.note || ""} fields={getSpecialtyRecordConfig(doctor.slug).fields} />}
+    {doctorModule(doctor, "visitSummary")?.enabled ? <TangVisitSummary doctorSlug={doctor.slug} days={doctorModule(doctor, "visitSummary")?.days} records={records} questions={plan?.note || ""} /> : usesUnifiedTemplate(doctor) && <SpecialtyVisitSummary records={records} questions={plan?.note || ""} fields={getSpecialtyRecordConfig(doctor).fields} />}
     <ServicePlanWorksheet doctor={doctor} service={service} planId={plan?.id || service} stored={stored} setStored={setStored} persistence={persistence} onDirtyChange={onDirtyChange} onManage={onManage} onAsk={onAsk} />
   </>;
 }
 
 function ServicesPanel({ doctor, experience, onAsk, onManage, compact = false, onTangAction }: { doctor: PublicDoctorDetail; experience: DoctorExperience; onAsk: AskNavigator; onManage: () => void; compact?: boolean; onTangAction?: (action: string) => void }) {
+  const custom = getDoctorCustom(doctor);
   const preview = useDoctorPreview();
   const serviceIcons: Icon[] = [StethoscopeIcon, FileTextIcon, HeartIcon, CalendarCheckIcon];
   const [selected, setSelected] = useState<{ id: string; service: string } | null>(null);
@@ -2138,11 +2141,11 @@ function ServicesPanel({ doctor, experience, onAsk, onManage, compact = false, o
   const plans = normalizeServicePlans(stored).plans;
   const canLeave = () => !selectedDirty || window.confirm("当前计划尚未保存，离开后未保存的修改会丢失。确定继续吗？");
   const closeService = () => { if (canLeave()) { setSelected(null); setSelectedDirty(false); } };
-  const customGrid = !compact && Boolean(onTangAction && doctorCustoms[doctor.slug]);
+  const customGrid = !compact && Boolean(onTangAction && custom);
   return (
     <div className={compact ? "journey-services-panel service-plans-compact" : "journey-simple-panel journey-services-panel"}>
-      <header><span className="journey-eyebrow">PROFESSIONAL SERVICES</span>{compact ? <h2>服务资料与计划</h2> : <h1>专业健康服务</h1>}<p>{customGrid && doctorCustoms[doctor.slug].servicesIntro ? doctorCustoms[doctor.slug].servicesIntro : "整理专科资料与问题，保存准备进度，再带摘要进入咨询。"}</p></header>
-      {customGrid && <TangFeatureGrid groups={enabledGroups(doctorCustoms[doctor.slug])} onOpen={onTangAction!} />}
+      <header><span className="journey-eyebrow">PROFESSIONAL SERVICES</span>{compact ? <h2>服务资料与计划</h2> : <h1>专业健康服务</h1>}<p>{customGrid && custom!.servicesIntro ? custom!.servicesIntro : "整理专科资料与问题，保存准备进度，再带摘要进入咨询。"}</p></header>
+      {customGrid && <TangFeatureGrid groups={enabledGroups(custom!)} onOpen={onTangAction!} />}
       {!customGrid && <>
       {!compact && <button className="journey-primary-button" onClick={onManage}><ClipboardTextIcon size={18} /> 填写记录与查看统计</button>}
       <ConsumerServicesPanel doctorSlug={doctor.slug} preview={preview} />
@@ -2151,13 +2154,13 @@ function ServicesPanel({ doctor, experience, onAsk, onManage, compact = false, o
         {(doctor.builder ? doctor.builder.servicePlans.map(item => item.title) : doctor.services).map((service, index) => {
           const ServiceIcon = serviceIcons[index % serviceIcons.length];
           const plan = plans.find(item => item.service === service);
-          return <button key={service} onClick={() => setSelected({ id: plan?.id || doctor.builder?.servicePlans.find(item => item.title === service)?.id || service, service })}><span><ServiceIcon size={25} weight="duotone" /></span><b>{service}</b>{(plan || configForDoctor(doctor)?.services.showPlanStatus !== false) && <small>{plan ? `已保存 · 已整理${plan.completed.length}项` : "打开清单与记录"}</small>}<CaretRightIcon size={17} /></button>;
+          return <button key={service} onClick={() => setSelected({ id: plan?.id || doctor.builder?.servicePlans.find(item => item.title === service)?.id || service, service })}><span><ServiceIcon size={25} weight="duotone" /></span><b>{service}</b>{(plan || resolveDoctorConfig(doctor)?.services.showPlanStatus !== false) && <small>{plan ? `已保存 · 已整理${plan.completed.length}项` : "打开清单与记录"}</small>}<CaretRightIcon size={17} /></button>;
         })}
       </div>
       {plans.filter(plan => !(doctor.builder ? doctor.builder.servicePlans.map(item => item.title) : doctor.services).includes(plan.service) || plans.find(item => item.service === plan.service)?.id !== plan.id).map(plan => <button className="journey-secondary-button" key={plan.id} onClick={() => setSelected({ id: plan.id, service: plan.service })}>查看已保存计划：{plan.service}</button>)}
       {!compact && componentEnabled(doctor, "content") && <PublishedContentSection content={doctor.content.filter((item) => item.type === "service")} title="已发布服务" onAsk={onAsk} />}
       </>}
-      {!compact && <section className="journey-boundary"><ShieldCheckIcon size={23} weight="duotone" /><div>{configForDoctor(doctor)?.services.showBoundaryTagline !== false && <b>{experience.tagline}</b>}<p>线上内容用于健康教育和就医准备，不提供诊断、处方或急救服务。{customGrid && usesUnifiedTemplate(doctor) && configForDoctor(doctor)?.safety.showHotlinesInBoundary && <><br />紧急情况请拨打 <a href="tel:120">120</a>，心理援助热线 <a href="tel:12356">12356</a>。</>}</p></div></section>}
+      {!compact && <section className="journey-boundary"><ShieldCheckIcon size={23} weight="duotone" /><div>{resolveDoctorConfig(doctor)?.services.showBoundaryTagline !== false && <b>{experience.tagline}</b>}<p>线上内容用于健康教育和就医准备，不提供诊断、处方或急救服务。{customGrid && usesUnifiedTemplate(doctor) && resolveDoctorConfig(doctor)?.safety.showHotlinesInBoundary && <><br />紧急情况请拨打 <a href="tel:120">120</a>，心理援助热线 <a href="tel:12356">12356</a>。</>}</p></div></section>}
       <AnimatePresence>
         {selected && <FeatureSheet title={selected.service} eyebrow="PROFESSIONAL SERVICE" onClose={closeService}>
           <ServicePlanWorksheet key={selected.id} doctor={doctor} service={selected.service} planId={selected.id} stored={stored} setStored={setStored} persistence={servicePersistence} onDirtyChange={setSelectedDirty} onManage={() => { if (canLeave()) { setSelected(null); onManage(); } }} onAsk={question => { if (canLeave()) { setSelected(null); onAsk(question); } }} />
@@ -2182,10 +2185,10 @@ function MePanel({ doctor, experience, onAsk, onWellnessOpen, onManage }: { doct
   const [activePanel, setActivePanel] = useState<"profile" | "favorites" | "history" | "records" | "privacy" | "about" | null>(null);
   const [copiedFavoriteId, setCopiedFavoriteId] = useState("");
   const userQuestions = messages.filter((message) => message.role === "user").reverse();
-  const sortedHealthRecords = useMemo(() => normalizeHealthRecords(records, doctor.builder ? configuredRecordConfig(doctor, getSpecialtyRecordConfig(doctor.slug)) : undefined).sort((left, right) =>
+  const sortedHealthRecords = useMemo(() => normalizeHealthRecords(records, doctor.builder ? configuredRecordConfig(doctor, getSpecialtyRecordConfig(doctor)) : undefined).sort((left, right) =>
     healthRecordDateKey(right).localeCompare(healthRecordDateKey(left))
     || Date.parse(right.updatedAt || right.createdAt) - Date.parse(left.updatedAt || left.createdAt)), [records, doctor]);
-  const canShareRecentHealthRecords = healthContextEnabled(doctor) && buildHealthContextPayload(sortedHealthRecords, new Date(), doctor.builder ? configuredRecordConfig(doctor, getSpecialtyRecordConfig(doctor.slug)) : undefined).records.length > 0;
+  const canShareRecentHealthRecords = healthContextEnabled(doctor) && buildHealthContextPayload(sortedHealthRecords, new Date(), doctor.builder ? configuredRecordConfig(doctor, getSpecialtyRecordConfig(doctor)) : undefined).records.length > 0;
 
   useEffect(() => setMessages(stripStoredCitationDetails), [setMessages]);
 
@@ -2256,7 +2259,7 @@ function MePanel({ doctor, experience, onAsk, onWellnessOpen, onManage }: { doct
         <div><h2>{account.user && ["游客账户", "微信用户"].includes(profileName) ? "微信用户" : profileName}</h2><p>{account.user ? "微信账户 · 支持跨设备同步" : "游客体验 · 记录保存在本机"}</p></div>
         <button disabled={templatePreview} onClick={openProfile}><NotePencilIcon size={16} /> 编辑</button>
       </section>
-      {preview ? <p className="journey-preview-note">{templatePreview ? "模板只读预览：创建草稿后可使用账户、记录和交互功能。" : "草稿体验账户：记录仅保存在独立的本机预览空间，微信登录与云同步不可用。"}</p> : <ConsumerAccountCard doctorSlug={doctor.slug} />}
+      {preview ? <p className="journey-preview-note">{templatePreview ? "模板只读预览：创建草稿后可使用账户、记录和交互功能。" : "草稿体验账户：记录仅保存在独立的本机预览空间，微信登录与云同步不可用。"}</p> : <ConsumerAccountCard doctorSlug={doctor.slug} doctorConfig={doctor.doctorConfig} />}
       {usesWellness(doctor) && onWellnessOpen && <WellnessMeLinks onOpen={onWellnessOpen} />}
       <div className="journey-menu-list">
         {(["我的收藏", "浏览记录", "健康档案", "隐私与设置", `关于${doctor.name}智能体`] as const).map((item, index) => (
@@ -2283,13 +2286,13 @@ function MePanel({ doctor, experience, onAsk, onWellnessOpen, onManage }: { doct
 
         {activePanel === "records" && <FeatureSheet title="健康档案" eyebrow="HEALTH RECORDS" onClose={closePanel}>
           <button className="journey-primary-button" onClick={() => { closePanel(); onManage(); }}><NotePencilIcon size={18} /> 填写记录与查看统计</button>
-          {sortedHealthRecords.length ? <><div className="journey-record-list">{sortedHealthRecords.map((record) => <article key={record.id}><span>{healthRecordDateKey(record)}</span><b>{formatHealthMetricsSummary(record, doctor.builder ? configuredRecordConfig(doctor, getSpecialtyRecordConfig(doctor.slug)) : undefined) || record.completedTitles.join("、") || "自我记录"}</b>{record.note && <p>{record.note}</p>}<small>{record.source === "home" ? "状态记录" : "健康管理"}</small><div className="journey-list-actions">{configForDoctor(doctor)?.records.askWithRecords?.share === "summary" ? <button disabled={!canShareRecentHealthRecords} onClick={() => { closePanel(); onAsk(configForDoctor(doctor)!.records.askWithRecords!.prompt, true); }}><ChatCircleDotsIcon size={15} />{configForDoctor(doctor)!.records.askWithRecords!.label}</button> : <button onClick={() => continueQuestion(`我想继续了解这次健康记录（${healthRecordDateKey(record)}）：${formatHealthMetricsSummary(record, doctor.builder ? configuredRecordConfig(doctor, getSpecialtyRecordConfig(doctor.slug)) : undefined) || record.completedTitles.join("、")}${record.note ? `；补充：${record.note}` : ""}`)}><ChatCircleDotsIcon size={15} />带记录咨询</button>}<button className="danger" onClick={() => deleteHealthRecord(record.id)}><TrashIcon size={15} />删除</button></div></article>)}</div><button className="journey-danger-button" onClick={clearHealthRecords}><TrashIcon size={16} /> 清空健康档案</button></> : <div className="journey-empty-state"><ClipboardTextIcon size={34} weight="duotone" /><b>暂无健康档案</b><p>完成首页状态记录后会自动保存到这里。</p></div>}
-          <p className="journey-sheet-disclaimer"><ShieldCheckIcon size={14} /> {account.user ? "健康档案保存在你的账户中；" : "健康档案保存在当前设备；"}只有你主动选择咨询时，才会向 AI 提交{configForDoctor(doctor)?.records.askWithRecords?.share === "summary" ? "近期结构化摘要" : "所选记录内容"}。</p>
+          {sortedHealthRecords.length ? <><div className="journey-record-list">{sortedHealthRecords.map((record) => <article key={record.id}><span>{healthRecordDateKey(record)}</span><b>{formatHealthMetricsSummary(record, doctor.builder ? configuredRecordConfig(doctor, getSpecialtyRecordConfig(doctor)) : undefined) || record.completedTitles.join("、") || "自我记录"}</b>{record.note && <p>{record.note}</p>}<small>{record.source === "home" ? "状态记录" : "健康管理"}</small><div className="journey-list-actions">{resolveDoctorConfig(doctor)?.records.askWithRecords?.share === "summary" ? <button disabled={!canShareRecentHealthRecords} onClick={() => { closePanel(); onAsk(resolveDoctorConfig(doctor)!.records.askWithRecords!.prompt, true); }}><ChatCircleDotsIcon size={15} />{resolveDoctorConfig(doctor)!.records.askWithRecords!.label}</button> : <button onClick={() => continueQuestion(`我想继续了解这次健康记录（${healthRecordDateKey(record)}）：${formatHealthMetricsSummary(record, doctor.builder ? configuredRecordConfig(doctor, getSpecialtyRecordConfig(doctor)) : undefined) || record.completedTitles.join("、")}${record.note ? `；补充：${record.note}` : ""}`)}><ChatCircleDotsIcon size={15} />带记录咨询</button>}<button className="danger" onClick={() => deleteHealthRecord(record.id)}><TrashIcon size={15} />删除</button></div></article>)}</div><button className="journey-danger-button" onClick={clearHealthRecords}><TrashIcon size={16} /> 清空健康档案</button></> : <div className="journey-empty-state"><ClipboardTextIcon size={34} weight="duotone" /><b>暂无健康档案</b><p>完成首页状态记录后会自动保存到这里。</p></div>}
+          <p className="journey-sheet-disclaimer"><ShieldCheckIcon size={14} /> {account.user ? "健康档案保存在你的账户中；" : "健康档案保存在当前设备；"}只有你主动选择咨询时，才会向 AI 提交{resolveDoctorConfig(doctor)?.records.askWithRecords?.share === "summary" ? "近期结构化摘要" : "所选记录内容"}。</p>
         </FeatureSheet>}
 
         {activePanel === "privacy" && <FeatureSheet title="隐私与设置" eyebrow="PRIVACY SETTINGS" onClose={closePanel}>
           <div className="journey-settings-list">
-            <label><div><b>保存对话记录</b><p>{account.user ? (usesTangRecords(doctor) ? "将对话与心理自评保存在账户中，关闭时清除对应云端记录。" : "将对话历史保存在账户中，关闭时清除对应云端记录。") : (configForDoctor(doctor)?.records.privacyHint ?? "将对话历史保存在当前设备；关闭时会立即清除本机副本。")}</p></div><input type="checkbox" disabled={templatePreview} checked={privacy.saveChat} onChange={(event) => changeSaveChat(event.target.checked)} /></label>
+            <label><div><b>保存对话记录</b><p>{account.user ? (usesTangRecords(doctor) ? "将对话与心理自评保存在账户中，关闭时清除对应云端记录。" : "将对话历史保存在账户中，关闭时清除对应云端记录。") : (resolveDoctorConfig(doctor)?.records.privacyHint ?? "将对话历史保存在当前设备；关闭时会立即清除本机副本。")}</p></div><input type="checkbox" disabled={templatePreview} checked={privacy.saveChat} onChange={(event) => changeSaveChat(event.target.checked)} /></label>
             <label><div><b>自动语音播报</b><p>{doctorModule(doctor, "voice")?.hint ?? "语音提问后自动播放科普回复。"}</p></div><input type="checkbox" checked={privacy.voicePlayback} onChange={(event) => setPrivacy((current) => ({ ...current, voicePlayback: event.target.checked }))} /></label>
             <label><div><b>健康提醒</b><p>显示首页健康记录提醒。</p></div><input type="checkbox" checked={privacy.reminders} onChange={(event) => setPrivacy((current) => ({ ...current, reminders: event.target.checked }))} /></label>
           </div>
@@ -2430,7 +2433,7 @@ function DoctorAppBody() {
   };
   const tang = usesTangRecords(doctor);
   const unified = usesUnifiedTemplate(doctor);
-  const custom = doctorCustoms[doctor.slug];
+  const custom = getDoctorCustom(doctor);
   const educationEmpty = unified && !tang && !doctor.articles.length && !custom?.videos.length
     && !doctor.content.some(item => item.type === "article" || item.type === "faq");
   const availableNavigation = configuredNavigation(doctor, navItems);
@@ -2499,6 +2502,6 @@ function DoctorAppBody() {
       </div>
     </main>
   );
-  const content = usesWellness(doctor) ? <WellnessProvider doctorSlug={doctor.slug} doctorName={doctor.name}>{app}</WellnessProvider> : app;
+  const content = usesWellness(doctor) ? <WellnessProvider doctorSlug={doctor.slug} doctorConfig={doctor.doctorConfig} doctorName={doctor.name}>{app}</WellnessProvider> : app;
   return custom ? <TangConsent isTang={unified} lines={noticeLines} key={tabStorageKey} storageKey={doctorStorageKey(preview ? previewStorageSlug(doctor.slug) : doctor.slug, "ai-consent-v02")}>{content}</TangConsent> : content;
 }

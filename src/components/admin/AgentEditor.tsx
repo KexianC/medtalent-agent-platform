@@ -1,8 +1,10 @@
+import { getDoctorConfig } from "../../doctors/index";
+import { BLANK_DOCTOR_CONFIG, normalizeDoctorConfig } from "../../lib/doctorConfig";
 import { useEditorAutosave } from '../../lib/useEditorAutosave';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Bot, CheckCircle2, Database, ExternalLink, History, Layers3, MessageSquareText, Save, ShieldCheck, SlidersHorizontal, Sparkles, Zap } from 'lucide-react';
-import { ApiError, agentPath, formatTime, platformApi, post, put, saveAgentDraftCAS, type AgentConfig, type AgentReadiness, type PlatformAgent, type PlatformSettings } from '../../lib/platformApi';
+import { ApiError, agentPath, formatTime, platformApi, post, saveAgentDraftCAS, type AgentConfig, type AgentReadiness, type PlatformAgent, type PlatformSettings } from '../../lib/platformApi';
 import { Checks, EmptyState, ErrorBanner, Field, Loading, Panel, Status, useAction, useResource } from './shared';
 import AvatarManager from './AvatarManager';
 import DraftConversationPanel from './DraftConversation';
@@ -23,31 +25,58 @@ export default function AgentEditor({ agent, canEdit, canReview = false, draftOw
   const navigate = useNavigate();
   const [governanceDirty, setGovernanceDirty] = useState(false);
   const [form, setForm] = useState<PlatformAgent>(agent); const [tab, setTab] = useState<string>('prompt');
+  const [doctorConfigText, setDoctorConfigText] = useState(agent.doctorConfig ? JSON.stringify(agent.doctorConfig, null, 2) : '');
+  const [doctorConfigError, setDoctorConfigError] = useState('');
   const [baseHash, setBaseHash] = useState(agent.draftHash || '');
   const [conflict, setConflict] = useState<PlatformAgent>();
   const { busy, run } = useAction(notify);
-  const dirty = JSON.stringify(form) !== JSON.stringify(agent);
+  const dirty = JSON.stringify(form) !== JSON.stringify(agent) || doctorConfigText !== (form.doctorConfig ? JSON.stringify(form.doctorConfig, null, 2) : '');
   const readiness = useResource<AgentReadiness>(agentPath(agent.slug) + '/readiness');
   const autosave = useEditorAutosave({ owner: draftOwnerId, agent: form, dirty, canEdit, baseHash: baseHash || readiness.data?.draftHash || '' });
+  const editDoctorConfigText = (value: string) => {
+    setDoctorConfigText(value);
+    setDoctorConfigError('');
+    try {
+      const doctorConfig = normalizeDoctorConfig(JSON.parse(value));
+      if (doctorConfig.slug === form.slug) setForm(current => ({ ...current, doctorConfig }));
+    } catch { /* 未完成的 JSON 留在文本框中，保存时显示中文错误。 */ }
+  };
+  const validatedForm = () => {
+    try {
+      let doctorConfig = form.doctorConfig;
+      if (doctorConfigText.trim()) {
+        let parsed: unknown;
+        try { parsed = JSON.parse(doctorConfigText); } catch { throw new Error('医生配置 JSON 格式无效，请检查引号、逗号和括号。'); }
+        doctorConfig = normalizeDoctorConfig(parsed);
+        if (doctorConfig.slug !== form.slug) throw new Error('医生配置标识必须与智能体标识一致。');
+      } else if (doctorConfig) throw new Error('已有医生配置不能删除。');
+      setDoctorConfigError('');
+      return { ...form, ...(doctorConfig ? { doctorConfig } : {}) };
+    } catch (error) {
+      setDoctorConfigError(error instanceof Error ? error.message : '医生配置无效。');
+      throw error;
+    }
+  };
   const persistDraft = async () => {
+    const validated = validatedForm();
     const expected = baseHash || agent.draftHash || readiness.data?.draftHash;
     if (!expected) throw new Error('请刷新后重新获取草稿版本，再保存当前编辑。');
-    try { const saved = await saveAgentDraftCAS(agent.slug, form, expected); autosave.discard(); setBaseHash(saved.draftHash || ''); return saved; }
+    try { const saved = await saveAgentDraftCAS(agent.slug, validated, expected); autosave.discard(); setBaseHash(saved.draftHash || ''); return saved; }
     catch (error) { if (error instanceof ApiError && error.status === 409 && error.code === 'DRAFT_CONFLICT') { const current = await platformApi<PlatformAgent>(agentPath(agent.slug)); setConflict(current); } throw error; }
   };
-  const publicationBlocked = !!form.builder && (dirty || governanceDirty || !readiness.data?.ready);
+  const publicationBlocked = (!!form.builder || !!form.doctorConfig || !!doctorConfigText.trim() || readiness.data?.required === true) && (dirty || governanceDirty || !readiness.data?.ready);
   const preview = () => void run(async () => { if (dirty) await persistDraft(); if (dirty) onSaved(); onDirty(false); navigate('/admin/preview/' + encodeURIComponent(agent.slug)); });
   const versions = useResource<Array<{ version: number; publishedAt: string; name: string }>>(tab === 'safety' ? `${agentPath(agent.slug)}/versions` : null);
   useEffect(() => { onDirty(dirty || governanceDirty); }, [dirty, governanceDirty, onDirty]);
   const update = (key: keyof PlatformAgent, value: unknown) => setForm(current => ({ ...current, [key]: value }));
   const config = (key: keyof AgentConfig, value: unknown) => setForm(current => ({ ...current, config: { ...current.config, [key]: value } }));
   const save = async () => run(async () => { await persistDraft(); onSaved(); }, '草稿已保存。');
-  const publish = async () => { if (!await confirm(`确认${dirty ? '保存当前修改并' : ''}发布“${form.name}”？发布后前台将使用新版本。`)) return; void run(async () => { if (dirty) await put(agentPath(agent.slug), form); await post(`${agentPath(agent.slug)}/publish`); onSaved(); }, '智能体已发布，前台将读取最新发布版本。'); };
+  const publish = async () => { if (!await confirm(`确认${dirty ? '保存当前修改并' : ''}发布“${form.name}”？发布后前台将使用新版本。`)) return; void run(async () => { if (dirty) await persistDraft(); await post(`${agentPath(agent.slug)}/publish`); onSaved(); }, '智能体已发布，前台将读取最新发布版本。'); };
   const completed = [!!form.name && !!form.department && !!form.specialty, !!form.config.systemPrompt, !!form.config.welcomeMessage, form.config.maxTokens >= 128].filter(Boolean).length;
   const optimize = async () => { if (settings?.aiConfigured === false) { notify('AI 模型尚未配置。请在服务端设置 AI_API_KEY、AI_API_URL 和 AI_MODEL。', true); return; } void run(async () => { const result = await post<{ systemPrompt: string }>(`${agentPath(agent.slug)}/optimize`, { prompt: form.config.systemPrompt }); config('systemPrompt', result.systemPrompt); }, 'AI 优化已填入编辑器，请核验后保存。'); };
   return <>
-    <DraftRecoveryBanner saved={autosave.recovery} error={autosave.error} savedAt={autosave.savedAt} onRestore={() => { if (autosave.recovery) { setForm(autosave.recovery.agent); setBaseHash(autosave.recovery.baseHash); autosave.consume(); } }} onDiscard={() => { void confirm('确认丢弃当前账户的本地暂存？服务器草稿不会被修改。').then(ok => { if (ok) autosave.discard(); }); }} />
-    {conflict && <DraftConflictPanel remote={conflict} local={form} onLoadRemote={() => { void confirm('载入服务器最新草稿会放弃当前编辑，确认继续？').then(ok => { if (ok) { setForm(conflict); setBaseHash(conflict.draftHash || ''); setConflict(undefined); autosave.discard(); onSaved(); } }); }} onRebase={() => { void confirm('保留当前编辑并更新基线后，下一次保存可能覆盖对照中的服务器字段。请确认已完成差异核对。').then(ok => { if (ok) { setBaseHash(conflict.draftHash || ''); setConflict(undefined); } }); }} />}
+    <DraftRecoveryBanner saved={autosave.recovery} error={autosave.error} savedAt={autosave.savedAt} onRestore={() => { if (autosave.recovery) { setForm(autosave.recovery.agent); setDoctorConfigText(autosave.recovery.agent.doctorConfig ? JSON.stringify(autosave.recovery.agent.doctorConfig, null, 2) : ''); setDoctorConfigError(''); setBaseHash(autosave.recovery.baseHash); autosave.consume(); } }} onDiscard={() => { void confirm('确认丢弃当前账户的本地暂存？服务器草稿不会被修改。').then(ok => { if (ok) autosave.discard(); }); }} />
+    {conflict && <DraftConflictPanel remote={conflict} local={form} onLoadRemote={() => { void confirm('载入服务器最新草稿会放弃当前编辑，确认继续？').then(ok => { if (ok) { setForm(conflict); setDoctorConfigText(conflict.doctorConfig ? JSON.stringify(conflict.doctorConfig, null, 2) : ''); setDoctorConfigError(''); setBaseHash(conflict.draftHash || ''); setConflict(undefined); autosave.discard(); onSaved(); } }); }} onRebase={() => { void confirm('保留当前编辑并更新基线后，下一次保存可能覆盖对照中的服务器字段。请确认已完成差异核对。').then(ok => { if (ok) { setBaseHash(conflict.draftHash || ''); setConflict(undefined); } }); }} />}
     <section className="agent-context-card"><div className="agent-doctor-avatar" style={{ '--doctor-accent': form.accent, '--doctor-soft': form.accentSoft } as CSSProperties}>{form.portrait ? <img src={form.portrait} alt="" style={{ objectPosition: form.portraitPosition }} /> : form.name.slice(0, 1)}{agent.status === 'published' && <i />}</div><div className="agent-doctor-copy"><b>{form.name}</b><p>{form.department} · {form.hospital || '未填写机构'}</p></div><div className="agent-context-divider" /><div className="agent-context-stat"><span>运行状态</span><Status value={agent.status} /></div><div className="agent-context-stat"><span>发布版本</span><b>v{agent.version || 0}</b></div><div className="agent-context-stat"><span>草稿状态</span><b>{dirty ? '本地未保存' : agent.hasUnpublishedChanges ? '有未发布修改' : '已保存'}</b></div>{agent.status === 'published' && <Link className="agent-preview-link" to={`/d/${agent.slug}`} target="_blank" rel="noreferrer">预览前台<ExternalLink size={15} /></Link>}</section>
     <AgentReuseActions agent={agent} dirty={dirty || governanceDirty} canEdit={canEdit} notify={notify} onCreated={onCreated} />
     <div className="platform-toolbar"><button type="button" className="agent-secondary-button" disabled={busy || governanceDirty || (dirty && !canEdit)} onClick={preview}><ExternalLink size={16} />{dirty ? '保存并预览完整草稿' : '预览完整草稿'}</button><small>后台身份访问，使用当前已保存草稿；测试数据与正式用户数据隔离。</small></div>
@@ -59,6 +88,10 @@ export default function AgentEditor({ agent, canEdit, canReview = false, draftOw
       </div></fieldset></Panel>}
       {tab === 'prompt' && <DraftConversationPanel slug={agent.slug} dirty={dirty} draftHash={readiness.data?.draftHash} notify={notify} />}
       {tab === 'model' && <Panel title="模型与检索参数" description="密钥仅在服务端配置。这里的参数会在发布后应用于该智能体。"><div className={`platform-alert ${settings?.aiConfigured === false ? 'is-warning' : ''}`}><Bot size={18} /><span>{settings?.aiConfigured ? `已配置生成模型：${settings.model}` : '尚未配置生成模型。请在服务端设置 AI_API_KEY、AI_API_URL 和 AI_MODEL。'}</span></div><fieldset disabled={!canEdit || busy} className="platform-fieldset"><div className="platform-form-grid"><Field label="模型名称" hint="留空使用平台默认模型；请填写当前服务商支持的模型 ID。"><input value={form.config.model} onChange={event => config('model', event.target.value)} placeholder={settings?.model || '平台默认模型'} /></Field><Field label="最大输出长度" hint="128—8192 tokens"><input type="number" min={128} max={8192} step={1} value={form.config.maxTokens} onChange={event => config('maxTokens', Number(event.target.value))} /></Field>{([{ key: 'temperature', label: 'Temperature', min: 0, max: 2, step: 0.05 }, { key: 'topP', label: 'Top P', min: 0.01, max: 1, step: 0.01 }, { key: 'ragTopK', label: '检索片段数 Top K', min: 1, max: 12, step: 1 }, { key: 'ragThreshold', label: '检索分数阈值', min: 0, max: 1, step: 0.01 }] as const).map(item => <Field key={item.key} label={`${item.label} · ${form.config[item.key]}`}><input type="range" min={item.min} max={item.max} step={item.step} value={form.config[item.key]} onChange={event => config(item.key, Number(event.target.value))} /></Field>)}</div><Checks disabled={!canEdit || busy} values={[{ key: 'ragEnabled', label: '知识库检索增强', detail: '检索该智能体下已审核生效的知识片段。', checked: form.config.ragEnabled }, { key: 'requireCitations', label: '优先引用来源', detail: '要求模型保留检索来源依据，不编造引用。', checked: form.config.requireCitations }, { key: 'healthContextEnabled', label: '健康上下文', detail: '在用户授权的会话中使用健康记录上下文。', checked: form.config.healthContextEnabled }]} onChange={(key, value) => config(key as keyof AgentConfig, value)} /></fieldset></Panel>}
+      {tab === 'components' && <Panel title="医生配置（第 2 版）" description="粘贴完整 JSON，保存为草稿后按现有流程审核发布。留空时使用代码中的配置。" action={<button type="button" className="agent-secondary-button" disabled={!canEdit || busy} onClick={() => { editDoctorConfigText(JSON.stringify(getDoctorConfig(form.slug) ?? { ...BLANK_DOCTOR_CONFIG, slug: form.slug }, null, 2)); }}>载入代码中的配置</button>}>
+        <fieldset disabled={!canEdit || busy} className="platform-fieldset"><Field label="配置 JSON" wide><textarea className="platform-prompt" rows={22} spellCheck={false} value={doctorConfigText} onChange={event => editDoctorConfigText(event.target.value)} /></Field></fieldset>
+        {doctorConfigError && <ErrorBanner message={doctorConfigError} />}
+      </Panel>}
       {tab === 'components' && <AgentCompatibilityPanel slug={agent.slug} />}
       {tab === 'components' && <BuilderComponentPanel value={form.builder} canEdit={canEdit} busy={busy} onChange={value => update('builder', value)} />}
       {tab === 'safety' && <TemplateBindingPanel agent={agent} canEdit={canEdit && !dirty} notify={notify} onSaved={onSaved} />}

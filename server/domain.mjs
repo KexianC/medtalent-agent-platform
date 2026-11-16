@@ -1,4 +1,5 @@
 import { normalizeAgentBuilder } from "../src/lib/agentBuilder.ts";
+import { normalizeDoctorConfig } from "../src/lib/doctorConfig.ts";
 import { randomUUID } from "node:crypto";
 import { nasRelativeScopesOverlap, normalizeNasRelativePath } from "./nas-path.mjs";
 
@@ -202,12 +203,42 @@ export function normalizeAgent(input = {}, existing) {
     if (record.builder) record.builder.requiresReview = true;
   }
   if (existing?.builder && !record.builder) throw new PlatformError("已有组件配置不能删除，请通过组件开关调整。", 400, "BUILDER_CONFIG_REQUIRED");
+  if (value.doctorConfig !== undefined) {
+    try {
+      record.doctorConfig = normalizeDoctorConfig(value.doctorConfig);
+      if (record.doctorConfig.slug !== slug) throw new Error("医生配置标识必须与智能体标识一致。");
+    } catch (error) { throw new PlatformError(error.message, 400, "INVALID_DOCTOR_CONFIG"); }
+  }
+  if (existing?.doctorConfig && !record.doctorConfig) throw new PlatformError("已有医生配置不能删除。", 400, "INVALID_DOCTOR_CONFIG");
   return record;
 }
 
 export function publicAgent(agent) {
-  const { config, hasUnpublishedChanges, status, ...safe } = agent;
-  return { ...safe, welcomeMessage: config?.welcomeMessage || "" };
+  // 读取只投影公开字段，不用写入校验拒绝历史记录。
+  const safe = Object.fromEntries([
+    "slug", "name", "hospital", "department", "title", "specialty", "intro", "accent", "accentSoft",
+    "quickQuestions", "topics", "services", "portrait", "portraitPosition", "portraitTranslateY",
+    "portraitBackground", "portraitTransformOrigin", "portraitScale",
+  ].filter(key => Object.hasOwn(agent, key)).map(key => [key, agent[key]]));
+  if (Array.isArray(agent.articles)) safe.articles = agent.articles
+    .filter(article => article && typeof article === "object" && !Array.isArray(article))
+    .map(article => Object.fromEntries(["id", "title", "summary", "tag", "readTime"]
+      .filter(key => Object.hasOwn(article, key)).map(key => [key, article[key]])));
+  if (agent.builder !== undefined) {
+    try { safe.builder = normalizeAgentBuilder(agent.builder); }
+    catch { /* 无效的历史扩展不公开，也不影响其他字段读取。 */ }
+  }
+  if (agent.doctorConfig !== undefined) {
+    try {
+      const doctorConfig = normalizeDoctorConfig(agent.doctorConfig);
+      if (doctorConfig.slug === agent.slug) safe.doctorConfig = doctorConfig;
+    } catch { /* doctorConfig 无效时仅省略该扩展，写入校验保持严格。 */ }
+  }
+  if (Number.isSafeInteger(agent.version) && agent.version >= 0) safe.version = agent.version;
+  for (const key of ["createdAt", "updatedAt", "publishedAt"]) {
+    if (agent[key] === null || (typeof agent[key] === "string" && Number.isFinite(Date.parse(agent[key])))) safe[key] = agent[key];
+  }
+  return { ...safe, welcomeMessage: typeof agent.config?.welcomeMessage === "string" ? agent.config.welcomeMessage : "" };
 }
 
 export function normalizeContent(input, existing) {

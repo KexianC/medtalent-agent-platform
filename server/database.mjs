@@ -322,6 +322,7 @@ export class PlatformDatabase {
       .map((row) => this.agentFromRow(row, published)).filter(Boolean);
   }
 
+  // builder 和 doctorConfig 随完整 JSON 草稿/发布快照存储，无需新增列。
   createAgent(record, actor, publish = false) {
     return this.transaction(() => {
       if (this.getAgent(record.slug)) throw new PlatformError(`智能体标识 ${record.slug} 已存在。`, 409, "DUPLICATE_SLUG");

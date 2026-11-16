@@ -10,8 +10,11 @@ const configs = new Map([tangJinsong, chenZhiling, yuWen, fuJunfen].map(config =
   return [normalized.slug, normalized];
 }));
 export const getDoctorConfig = (slug: string): DoctorConfig | undefined => configs.get(slug);
-/** 后台搭建器 v1 保持优先；未配置医生继续使用现有通用行为。 */
-export const configForDoctor = (doctor: { slug: string; builder?: unknown }) => doctor.builder ? undefined : getDoctorConfig(doctor.slug);
-export function doctorModule<Id extends DoctorConfig["modules"][number]["id"]>(doctor: { slug: string; builder?: unknown }, id: Id) {
+export type ConfigurableDoctor = { slug: string; builder?: unknown; doctorConfig?: DoctorConfig };
+/** 后台 v2 优先，未填写时使用代码配置；未配置医生继续使用通用行为。 */
+export const resolveDoctorConfig = (doctor: ConfigurableDoctor): DoctorConfig | undefined => doctor.doctorConfig ?? getDoctorConfig(doctor.slug);
+/** 保留 v1 调用兼容性，页面统一使用 resolveDoctorConfig。 */
+export const configForDoctor = (doctor: ConfigurableDoctor) => doctor.builder && !doctor.doctorConfig ? undefined : resolveDoctorConfig(doctor);
+export function doctorModule<Id extends DoctorConfig["modules"][number]["id"]>(doctor: ConfigurableDoctor, id: Id) {
   return configForDoctor(doctor)?.modules.find((module): module is Extract<DoctorConfig["modules"][number], { id: Id }> => module.id === id);
 }

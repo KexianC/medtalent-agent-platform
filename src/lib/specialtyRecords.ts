@@ -1,5 +1,5 @@
 import { fields } from "../data/specialtyRecordFields.ts";
-import { getDoctorConfig } from "../doctors/index.ts";
+import { resolveDoctorConfig, type ConfigurableDoctor } from "../doctors/index.ts";
 import type { DoctorHealthRecord } from "../hooks/useDoctorLocalState";
 
 export type SpecialtyRecordField = {
@@ -39,8 +39,9 @@ const specialtyConfigs: Record<string, SpecialtyRecordConfig> = {
 
 const fallbackConfig = config("日常健康记录", "记录体重、睡眠和活动，整理自己的日常变化。", ["weightKg", "sleepHours", "activityMinutes"]);
 
-export const getSpecialtyRecordConfig = (slug: string): SpecialtyRecordConfig => {
-  const specialty = getDoctorConfig(slug)?.records.specialty;
+export const getSpecialtyRecordConfig = (doctor: string | ConfigurableDoctor): SpecialtyRecordConfig => {
+  const slug = typeof doctor === "string" ? doctor : doctor.slug;
+  const specialty = resolveDoctorConfig(typeof doctor === "string" ? { slug } : doctor)?.records.specialty;
   return specialty ? config(specialty.title, specialty.description, specialty.fieldKeys as Array<keyof typeof fields>)
     : Object.prototype.hasOwnProperty.call(specialtyConfigs, slug) ? specialtyConfigs[slug] : fallbackConfig;
 };

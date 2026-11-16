@@ -128,6 +128,7 @@ export function instantiateTemplateDraft(template, input) {
   const values = Object.fromEntries(template.parameters.map(param => [param.key, textField(input[param.key] ?? param.defaultValue, param.label, { required: param.required, max: param.key === "specialty" ? 500 : param.key === "hospital" ? 200 : param.key === "name" ? 80 : 100 })]));
   const substitute = value => typeof value === "string" ? value.replace(/\{\{(name|hospital|department|specialty)\}\}/g, (_, key) => values[key]) : Array.isArray(value) ? value.map(substitute) : value && typeof value === "object" ? Object.fromEntries(Object.entries(value).map(([key, nested]) => [key, substitute(nested)])) : value;
   const snapshot = substitute(clone(template.agentSnapshot));
+  if (snapshot.doctorConfig) snapshot.doctorConfig.slug = validateSlug(input.slug);
   return normalizeAgent({ ...snapshot, ...values, slug: validateSlug(input.slug), articles: [], builder: { ...(snapshot.builder || baseBuilder(["home", "chat", "content"])), requiresReview: true } });
 }
 export async function listAgentTemplates(database) {
@@ -148,6 +149,7 @@ export async function saveAgentAsTemplate(database, input, actor) {
     const replace = (value, property = "") => ["id", "key", "slug", "model", "speaker", "language", "responseStyle"].includes(property) ? value : typeof value === "string" ? replacements.reduce((text, key) => text.split(source[key]).join("{{" + key + "}}"), value) : Array.isArray(value) ? value.map(item => replace(item)) : value && typeof value === "object" ? Object.fromEntries(Object.entries(value).map(([key, nested]) => [key, replace(nested, key)])) : value;
     const snapshot = replace({ ...source, builder: materializeLegacyBuilder(source) });
     Object.assign(snapshot, { slug: "template-preview", name: "{{name}}", hospital: "{{hospital}}", department: "{{department}}", specialty: "{{specialty}}", title: "健康科普智能助手", articles: [], builder: { ...(snapshot.builder || baseBuilder(["home", "chat", "records", "services", "content"])), requiresReview: true } });
+    if (snapshot.doctorConfig) snapshot.doctorConfig.slug = snapshot.slug;
     for (const key of ["portrait", "portraitPosition", "portraitScale", "portraitTranslateY", "portraitBackground", "portraitTransformOrigin"]) delete snapshot[key];
     const template = { id: id(), name: textField(input.name, "模板名称", { required: true, max: 100 }), description: textField(input.description, "模板说明", { max: 1000 }), category: textField(input.category, "模板分类", { max: 60, fallback: "自定义" }), builtIn: false, version: 1, status: "draft", parameters: defaults, agentSnapshot: snapshot, evaluationCases: defaultTemplateEvaluationCases(recommendAgentTemplate(source.specialty + " " + source.intro)), createdAt: now(), updatedAt: now() };
     await database.setMeta(TEMPLATE_KEY, JSON.stringify([...templates, template]));
@@ -180,8 +182,8 @@ async function governance(database, slug) {
 export async function recordBuilderMutation(database, slug, actor) {
   const agent = await database.requireAgent(slug);
   const state = await governance(database, slug);
-  if (!agent.builder && !state.required) return;
-  await database.setMeta(govKey(slug), JSON.stringify({ ...state, lastModifiedBy: actor, lastModifiedAt: now(), required: state.required || agent.builder?.requiresReview === true }));
+  if (!agent.builder && !agent.doctorConfig && !state.required) return;
+  await database.setMeta(govKey(slug), JSON.stringify({ ...state, lastModifiedBy: actor, lastModifiedAt: now(), required: state.required || agent.builder?.requiresReview === true || !!agent.doctorConfig }));
 }
 export async function instantiateAgentTemplate(database, templateId, input, actor) {
   return database.transaction(async () => {
@@ -205,7 +207,8 @@ export async function copyAgentDraft(database, sourceSlug, input, actor, { clone
     const targetSlug = validateSlug(input.slug);
     const name = textField(input.name, "智能体名称", { max: 80, required: true });
     const config = Object.fromEntries(Object.entries(source.config).map(([key, value]) => [key, typeof value === "string" ? value.split(source.name).join(name) : value]));
-    const snapshot = { ...source, slug: targetSlug, name, articles: [], config, builder: { ...materializeLegacyBuilder(source), requiresReview: true } };
+    const snapshot = { ...source, slug: targetSlug, name, articles: [], config, builder: { ...materializeLegacyBuilder(source), requiresReview: true },
+      ...(source.doctorConfig ? { doctorConfig: { ...source.doctorConfig, slug: targetSlug, profile: { ...source.doctorConfig.profile, name } } } : {}) };
     for (const key of ["portrait", "portraitPosition", "portraitScale", "portraitTranslateY", "portraitBackground", "portraitTransformOrigin"]) delete snapshot[key];
     let agent = await database.createAgent(normalizeAgent(snapshot), actor);
     if (/^\/media\/avatars\/[a-f0-9]{24}$/.test(source.portrait || '')) {
@@ -242,7 +245,7 @@ export async function getBuilderReadiness(database, slug) {
   const qualificationFiles = await getQualificationFiles(database, slug);
   const knowledge = (pendingRelease ? pendingRelease.documents : await database.listEntities("documents", slug)).filter(document => document.status !== "deleted").map(document => ({ id: document.id, revision: document.revision, status: document.status, approved: document.approved, chunkCount: document.chunkCount, updatedAt: document.updatedAt })).sort((a, b) => a.id.localeCompare(b.id));
   const draftHash = hash({ agent, knowledge, qualificationFiles, pendingRelease: pendingRelease?.sourceReleaseId || null, content: contents.map(content => ({ id: content.id, title: content.title, summary: content.summary, body: content.body, type: content.type, status: content.status, tags: content.tags })).sort((a, b) => a.id.localeCompare(b.id)), qualification: state.qualification });
-  const required = state.required === true || agent.builder?.requiresReview === true;
+  const required = state.required === true || agent.builder?.requiresReview === true || !!agent.doctorConfig;
   const issues = [];
   const compatibility = getBuilderCompatibility(agent);
   if (pendingRelease && !pendingRelease.physicalStateMatches) issues.push("整套恢复候选建立后，内容或知识又被修改，请重新比较并选择版本。");
@@ -389,6 +392,7 @@ function parameterizedTemplateSnapshot(input){
  const source=normalizeAgent(input),identities=["name","hospital","department","specialty"].filter(key=>source[key]).sort((a,b)=>source[b].length-source[a].length);
  const replace=(value,property="")=>["id","key","slug","model","speaker","language","responseStyle","source","version"].includes(property)?value:typeof value==="string"?identities.reduce((text,key)=>text.split(source[key]).join("{{"+key+"}}"),value):Array.isArray(value)?value.map(item=>replace(item)):value&&typeof value==="object"?Object.fromEntries(Object.entries(value).map(([key,nested])=>[key,replace(nested,key)])):value;
  const snapshot=replace({...source,builder:materializeLegacyBuilder(source)});Object.assign(snapshot,{slug:"template-preview",name:"{{name}}",hospital:"{{hospital}}",department:"{{department}}",specialty:"{{specialty}}",title:"健康科普智能助手",articles:[]});
+ if(snapshot.doctorConfig)snapshot.doctorConfig.slug=snapshot.slug;
  for(const key of ["portrait","portraitPosition","portraitScale","portraitTranslateY","portraitBackground","portraitTransformOrigin"])delete snapshot[key];
  return snapshot;
 }

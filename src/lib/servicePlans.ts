@@ -1,4 +1,4 @@
-import { getDoctorConfig } from "../doctors/index.ts";
+import { resolveDoctorConfig, type ConfigurableDoctor } from "../doctors/index.ts";
 import type { BuilderServicePlan } from './agentBuilder';
 /** Shared service worksheets. All entries are the user's own preparation, never clinical decisions. */
 export type ServicePlan = {
@@ -24,8 +24,9 @@ const preparation: Record<string, string[]> = {
   'zhou-yong': ['整理咳嗽、气促与活动记录', '记录吸烟、接触环境及装置使用疑问', '整理已有影像与肺功能检查资料'],
 };
 
-export function getServiceWorkflow(slug: string, service: string): ServiceWorkflow {
-  const focus = getDoctorConfig(slug)?.services.preparation ?? (Object.prototype.hasOwnProperty.call(preparation, slug) ? preparation[slug] : ['整理相关健康记录与已有资料', '记录变化时间和日常感受', '列出希望咨询的问题']);
+export function getServiceWorkflow(doctor: string | ConfigurableDoctor, service: string): ServiceWorkflow {
+  const slug = typeof doctor === "string" ? doctor : doctor.slug;
+  const focus = resolveDoctorConfig(typeof doctor === "string" ? { slug } : doctor)?.services.preparation ?? (Object.prototype.hasOwnProperty.call(preparation, slug) ? preparation[slug] : ['整理相关健康记录与已有资料', '记录变化时间和日常感受', '列出希望咨询的问题']);
   if (/语音/.test(service)) return { action: 'voice', description: '先整理想说的问题，再进入当前对话使用语音输入。', steps: ['写下最想了解的问题', '确认内容中没有不必要的个人身份信息', '进入问答后选择语音输入'], question: '我想通过语音了解健康问题。' };
   if (/记录|日记|打卡|趋势|进度|不良反应/.test(service)) return { action: 'record', description: `使用健康管理中的真实记录回顾${service}；未测量的项目可留空。`, steps: [focus[0], '补充当天的实际感受和备注', '保存记录并回顾历史变化'], question: `我想了解怎样使用${service}整理日常情况。` };
   if (/准备|清单|就诊/.test(service)) return { action: 'prepare', description: '保存自己的资料准备进度和待问问题，方便就诊前检查。', steps: [...focus, '列出本次最想沟通的问题'], question: `请帮我梳理${service}时还可以准备哪些信息。` };

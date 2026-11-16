@@ -1,4 +1,5 @@
 import type { AgentBuilderConfig } from "../lib/agentBuilder";
+import type { DoctorConfig } from "../lib/doctorConfig";
 export type Article = {
   id: string;
   title: string;
@@ -28,6 +29,7 @@ export type DoctorProfile = {
   services: string[];
   articles: Article[];
   builder?: AgentBuilderConfig;
+  doctorConfig?: DoctorConfig;
 };
 
 const profile = (
